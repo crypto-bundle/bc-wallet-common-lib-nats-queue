@@ -2,9 +2,10 @@ package nats
 
 import (
 	"context"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type jsPushQueueGroupChanSubscription struct {
@@ -30,8 +31,6 @@ func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool
 
 		return false
 	}
-
-	s.jsNatsCtx.ConsumersInfo()
 
 	if !s.natsSubs.IsValid() {
 		s.logger.Warn("consumer lost nats subscription")

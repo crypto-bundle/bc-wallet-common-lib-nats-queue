@@ -119,7 +119,7 @@ func (wp *PullTypeConsumerWorkerPool) Run(ctx context.Context) error {
 	for _, w := range wp.workers {
 		w.msgChannel = wp.msgChannel
 
-		go w.Start()
+		go w.Run(ctx)
 	}
 
 	return wp.run()

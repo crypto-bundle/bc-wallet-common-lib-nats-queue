@@ -22,14 +22,14 @@ func (wp *jsQueueConsumerWorkerPool) Init(ctx context.Context) error {
 }
 
 func (wp *jsQueueConsumerWorkerPool) Run(ctx context.Context) error {
-	wp.run()
+	wp.run(ctx)
 
 	return wp.subscriptionSrv.Run(ctx)
 }
 
-func (wp *jsQueueConsumerWorkerPool) run() {
+func (wp *jsQueueConsumerWorkerPool) run(ctx context.Context) {
 	for _, w := range wp.workers {
-		go w.Start()
+		go w.Run(ctx)
 	}
 }
 
