@@ -24,19 +24,37 @@ type jsPushSubscription struct {
 	logger *zap.Logger
 }
 
+func (s *jsPushSubscription) OnReconnect(newConn *nats.Conn) error {
+	jsNatsCtx, err := newConn.JetStream()
+	if err != nil {
+		return err
+	}
+
+	s.jsNatsCtx = jsNatsCtx
+
+	s.natsConn = newConn
+
+	err = s.tryResubscribe()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *jsPushSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
+}
+
 func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats connection")
+		s.logger.Warn("consumer lost nats originConn")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
 		s.logger.Warn("consumer lost nats subscription")
-
-		if s.autoReSubscribe {
-			return s.tryResubscribe(ctx)
-		}
 
 		return false
 	}
@@ -45,31 +63,50 @@ func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 }
 
 func (s *jsPushSubscription) Init(ctx context.Context) error {
+	jsNatsCtx, err := s.natsConn.JetStream()
+	if err != nil {
+		return err
+	}
+
+	s.jsNatsCtx = jsNatsCtx
+
 	return nil
 }
 
-func (s *jsPushSubscription) Run(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
+	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel)
 	if err != nil {
 		return err
 	}
 
 	s.natsSubs = subs
 
+	//s.natsConn.SetErrorHandler(s.onDisconnect)
+	//s.natsConn.SetReconnectHandler(s.tryResubscribe)
+
 	return nil
 }
 
 func (s *jsPushSubscription) Shutdown(ctx context.Context) error {
-	return s.natsSubs.Unsubscribe()
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *jsPushSubscription) tryResubscribe(ctx context.Context) bool {
-	var isSubscribed = false
+func (s *jsPushSubscription) tryResubscribe() error {
+	if !s.autoReSubscribe {
+		return nil
+	}
+
+	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
-		if err != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(err),
+		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel)
+		if subsErr != nil {
+			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
 
 			time.Sleep(s.autoReSubscribeTimeout)
@@ -77,13 +114,16 @@ func (s *jsPushSubscription) tryResubscribe(ctx context.Context) bool {
 		}
 
 		s.natsSubs = subs
-		isSubscribed = true
 
 		s.logger.Info("re-subscription success")
 		break
 	}
 
-	return isSubscribed
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func newJsPushSubscriptionService(logger *zap.Logger,

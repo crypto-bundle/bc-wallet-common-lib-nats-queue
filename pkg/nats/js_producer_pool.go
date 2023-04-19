@@ -2,7 +2,6 @@ package nats
 
 import (
 	"context"
-	"errors"
 	"go.uber.org/zap"
 	"sync/atomic"
 
@@ -14,60 +13,58 @@ type jsProducerWorkerPool struct {
 	logger *zap.Logger
 
 	msgChannel chan *nats.Msg
-	handler    ProducerWorkerTask
 	streamName string
 	subject    []string
 
-	storage          nats.StorageType
-	jsInfo           *nats.StreamInfo
-	jsConfig         *nats.StreamConfig
-	natsProducerConn nats.JetStreamContext
+	storage  nats.StorageType
+	jsInfo   *nats.StreamInfo
+	jsConfig *nats.StreamConfig
+
+	natsConn  *nats.Conn
+	jsNatsCtx nats.JetStreamContext
 
 	workers      []*jsProducerWorkerWrapper
 	workersCount uint32
 	rr           uint32 // round-robin index
 }
 
-func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
-	streamInfo, err := wp.getStreamInfo(ctx)
+func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
+	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
 		return err
 	}
 
-	if streamInfo == nil {
-		return ErrReturnedNilStreamInfo
-	}
+	wp.jsNatsCtx = jsNatsCtx
 
-	for i, _ := range wp.workers {
-		wp.workers[i].SetStreamInfo(streamInfo)
-	}
+	wp.natsConn = newConn
 
 	return nil
 }
 
-func (wp *jsProducerWorkerPool) getStreamInfo(ctx context.Context) (*nats.StreamInfo, error) {
-	streamInfo, err := wp.natsProducerConn.StreamInfo(wp.jsConfig.Name)
-	if err != nil {
-		if errors.Is(err, nats.ErrStreamNotFound) {
-			wp.logger.Error("stream not found", zap.Error(err))
-		}
+func (wp *jsProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
+}
 
-		return nil, err
+func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+	if !wp.natsConn.IsConnected() {
+		wp.logger.Warn("producer lost nats originConn")
+
+		return false
 	}
 
-	return streamInfo, nil
+	return true
+}
+
+func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
+	return nil
 }
 
 func (wp *jsProducerWorkerPool) Run(ctx context.Context) error {
-	wp.run()
-
-	return nil
-}
-
-func (wp *jsProducerWorkerPool) run() {
 	for i, _ := range wp.workers {
 		go wp.workers[i].Run()
 	}
+
+	return nil
 }
 
 func (wp *jsProducerWorkerPool) Shutdown(ctx context.Context) error {
@@ -87,18 +84,22 @@ func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) 
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewJsProducerWorkersPool(
-	logger *zap.Logger,
+func NewJsProducerWorkersPool(logger *zap.Logger,
+	natsProducerConn *nats.Conn,
 	workersCount uint16,
 	streamName string,
 	subjects []string,
 	storage nats.StorageType,
-	natsProducerConn nats.JetStreamContext,
 ) (*jsProducerWorkerPool, error) {
 	l := logger.Named("producer.service").
 		With(zap.String(QueueStreamNameTag, streamName))
 
 	streamChannel := make(chan *nats.Msg, workersCount)
+
+	jsNatsCtx, err := natsProducerConn.JetStream()
+	if err != nil {
+		return nil, err
+	}
 
 	jsConfig := &nats.StreamConfig{
 		Name:     streamName,
@@ -107,21 +108,24 @@ func NewJsProducerWorkersPool(
 	}
 
 	workersPool := &jsProducerWorkerPool{
-		logger:           l,
-		msgChannel:       streamChannel,
-		jsConfig:         jsConfig,
-		streamName:       streamName,
-		subject:          subjects,
-		storage:          storage,
-		natsProducerConn: natsProducerConn,
+		logger:     l,
+		msgChannel: streamChannel,
+		jsConfig:   jsConfig,
+		streamName: streamName,
+		subject:    subjects,
+		storage:    storage,
+
+		natsConn:  natsProducerConn,
+		jsNatsCtx: jsNatsCtx,
 
 		workersCount: uint32(workersCount),
 		rr:           1, // round-robin index
 	}
 
 	for i := uint16(0); i < workersCount; i++ {
-		ww := newJsProducerWorker(logger, i, streamChannel, streamName, subjects,
-			natsProducerConn, make(chan bool))
+		ww := newJsProducerWorker(logger, jsNatsCtx, i,
+			streamChannel, streamName,
+			subjects, make(chan bool))
 
 		workersPool.workers = append(workersPool.workers, ww)
 	}

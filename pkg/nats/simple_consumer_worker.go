@@ -19,7 +19,7 @@ type consumerWorkerWrapper struct {
 	maxRedeliveryCount uint64
 }
 
-func (ww *consumerWorkerWrapper) Start() {
+func (ww *consumerWorkerWrapper) Run() {
 	for {
 		select {
 		case <-ww.stopWorkerChanel:

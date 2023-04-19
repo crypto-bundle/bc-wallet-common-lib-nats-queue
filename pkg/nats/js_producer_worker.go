@@ -15,14 +15,17 @@ var (
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	logger           *zap.Logger
-	msgChannel       <-chan *nats.Msg
-	jsInfo           *nats.StreamInfo
-	streamName       string
-	subjects         []string
+	logger     *zap.Logger
+	msgChannel <-chan *nats.Msg
+	jsInfo     *nats.StreamInfo
+
+	streamName string
+	subjects   []string
+
 	natsProducerConn nats.JetStreamContext
-	closeChanel      chan bool
-	num              uint16
+
+	closeChanel chan bool
+	num         uint16
 }
 
 func (ww *jsProducerWorkerWrapper) Run() {
@@ -64,20 +67,16 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func (ww *jsProducerWorkerWrapper) SetStreamInfo(streamInfo *nats.StreamInfo) {
-	ww.jsInfo = streamInfo
-}
-
 func (ww *jsProducerWorkerWrapper) Stop() {
 	ww.closeChanel <- true
 }
 
 func newJsProducerWorker(logger *zap.Logger,
+	natsProducerConn nats.JetStreamContext,
 	workerNum uint16,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
-	natsProducerConn nats.JetStreamContext,
 	closeChan chan bool,
 ) *jsProducerWorkerWrapper {
 	l := logger.Named("producer.service.worker").

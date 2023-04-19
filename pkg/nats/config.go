@@ -1,30 +1,26 @@
-package config
+package nats
 
 import (
 	"strings"
 	"time"
-
-	"github.com/caarlos0/env/v6"
 )
 
 type NatsConfig struct {
-	// NatsHost     string `env:"NATS_HOST" envDefault:"nats"`
-	// NatsPort     uint16 `env:"NATS_PORT" envDefault:"4222"`
-	NatsAddresses string `env:"NATS_ADDRESSES" envDefault:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
-	NatsUser      string `env:"NATS_USER" envDefault:"nast"`
-	NatsPassword  string `env:"NATS_PASSWORD" envDefault:"password"`
+	NatsAddresses string `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
+	NatsUser      string `envconfig:"NATS_USER" default:"nats"`
+	NatsPassword  string `envconfig:"NATS_PASSWORD" default:"password"`
 
-	NatsConnectionRetryOnFailed bool          `env:"NATS_CONNECTION_RETRY" envDefault:"true"`
-	NatsConnectionRetryCount    uint16        `env:"NATS_CONNECTION_RETRY_COUNT" envDefault:"30"`
-	NatsConnectionRetryTimeout  time.Duration `env:"NATS_CONNECTION_RETRY_TIMEOUT" envDefault:"15s"`
+	NatsConnectionRetryOnFailed bool          `envconfig:"NATS_CONNECTION_RETRY" default:"true"`
+	NatsConnectionRetryCount    uint16        `envconfig:"NATS_CONNECTION_RETRY_COUNT" default:"30"`
+	NatsConnectionRetryTimeout  time.Duration `envconfig:"NATS_CONNECTION_RETRY_TIMEOUT" default:"15s"`
 
-	NatsFlushTimeOut time.Duration `env:"NATS_FLUSH_TIMEOUT" envDefault:"15s"`
+	NatsFlushTimeOut time.Duration `envconfig:"NATS_FLUSH_TIMEOUT" default:"15s"`
 
-	NatsWorkersPerConsumer uint16 `env:"NATS_WORKER_PER_CONSUMER" envDefault:"5"`
+	NatsWorkersPerConsumer uint16 `envconfig:"NATS_WORKER_PER_CONSUMER" default:"5"`
 
-	NatsSubscriptionRetry        bool          `env:"NATS_WORKER_SUBSCRIPTION_RETRY" envDefault:"true"`
-	NatsSubscriptionRetryCount   uint16        `env:"NATS_WORKER_SUBSCRIPTION_RETRY_COUNT" envDefault:"3"`
-	NatsSubscriptionRetryTimeout time.Duration `env:"NATS_WORKER_SUBSCRIPTION_RETRY_TIMEOUT" envDefault:"3s"`
+	NatsSubscriptionRetry        bool          `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY" default:"true"`
+	NatsSubscriptionRetryCount   uint16        `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY_COUNT" default:"3"`
+	NatsSubscriptionRetryTimeout time.Duration `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY_TIMEOUT" default:"3s"`
 
 	nastAddresses []string
 }
@@ -75,17 +71,17 @@ func (c *NatsConfig) GetWorkersCountPerConsumer() uint16 {
 
 // Prepare variables to static configuration
 func (c *NatsConfig) Prepare() error {
-	err := env.Parse(c)
-	if err != nil {
-		return err
-	}
-
 	endpoints := strings.Split(c.NatsAddresses, ",")
 	length := len(endpoints)
 	if length < 1 {
 		return nil
 	}
+
 	c.nastAddresses = endpoints
 
+	return nil
+}
+
+func (c *NatsConfig) PrepareWith(dependenciesCfgSrvList ...interface{}) error {
 	return nil
 }

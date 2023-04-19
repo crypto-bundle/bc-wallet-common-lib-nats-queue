@@ -8,8 +8,8 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// producerWorkerPool is a minimal Worker implementation that simply wraps a
-type producerWorkerPool struct {
+// simpleProducerWorkerPool is a minimal Worker implementation that simply wraps a
+type simpleProducerWorkerPool struct {
 	logger *zap.Logger
 
 	msgChannel chan *nats.Msg
@@ -24,24 +24,32 @@ type producerWorkerPool struct {
 	rr           uint32 // round-robin index
 }
 
-func (wp *producerWorkerPool) Init(ctx context.Context) error {
+func (wp *simpleProducerWorkerPool) OnReconnect(conn *nats.Conn) error {
+	return nil
+}
+
+func (wp *simpleProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
+}
+
+func (wp *simpleProducerWorkerPool) Init(ctx context.Context) error {
 
 	return nil
 }
 
-func (wp *producerWorkerPool) Run(ctx context.Context) error {
+func (wp *simpleProducerWorkerPool) Run(ctx context.Context) error {
 	wp.run()
 
 	return nil
 }
 
-func (wp *producerWorkerPool) run() {
+func (wp *simpleProducerWorkerPool) run() {
 	for i, _ := range wp.workers {
 		go wp.workers[i].Run()
 	}
 }
 
-func (wp *producerWorkerPool) Shutdown(ctx context.Context) error {
+func (wp *simpleProducerWorkerPool) Shutdown(ctx context.Context) error {
 	for _, w := range wp.workers {
 		w.Stop()
 	}
@@ -49,28 +57,37 @@ func (wp *producerWorkerPool) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (wp *producerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) {
+func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+	if !wp.natsProducerConn.IsConnected() {
+		wp.logger.Warn("producer lost nats originConn")
+
+		return false
+	}
+
+	return true
+}
+
+func (wp *simpleProducerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) {
 	wp.msgChannel <- msg
 }
 
-func (wp *producerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
+func (wp *simpleProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	n := atomic.AddUint32(&wp.rr, 1)
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewProducerWorkersPool(
-	logger *zap.Logger,
+func NewSimpleProducerWorkersPool(logger *zap.Logger,
+	natsProducerConn *nats.Conn,
 	workersCount uint16,
 	subjectName string,
 	groupName string,
-	natsProducerConn *nats.Conn,
-) (*producerWorkerPool, error) {
+) (*simpleProducerWorkerPool, error) {
 	l := logger.Named("producer.service").
 		With(zap.String(QueueSubjectNameTag, subjectName))
 
 	msgChannel := make(chan *nats.Msg, workersCount)
 
-	workersPool := &producerWorkerPool{
+	workersPool := &simpleProducerWorkerPool{
 		logger: l,
 
 		subjectName: subjectName,

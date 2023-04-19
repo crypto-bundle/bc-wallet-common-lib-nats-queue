@@ -25,6 +25,19 @@ type consumerHandler interface {
 
 type subscriptionService interface {
 	Healthcheck(ctx context.Context) bool
+	OnDisconnect(conn *nats.Conn, err error) error
+	OnReconnect(conn *nats.Conn) error
+
+	Init(ctx context.Context) error
+	Subscribe(ctx context.Context) error
+	Shutdown(ctx context.Context) error
+}
+
+type consumerService interface {
+	Healthcheck(ctx context.Context) bool
+	OnDisconnect(conn *nats.Conn, err error) error
+	OnReconnect(conn *nats.Conn) error
+
 	Init(ctx context.Context) error
 	Run(ctx context.Context) error
 	Shutdown(ctx context.Context) error
@@ -33,4 +46,17 @@ type subscriptionService interface {
 type consumerWorker interface {
 	Run(ctx context.Context) error
 	ProcessMsg(msg *nats.Msg)
+}
+
+type producerService interface {
+	Healthcheck(ctx context.Context) bool
+	OnDisconnect(conn *nats.Conn, err error) error
+	OnReconnect(conn *nats.Conn) error
+
+	Init(ctx context.Context) error
+	Run(ctx context.Context) error
+	Shutdown(ctx context.Context) error
+
+	Produce(ctx context.Context, msg *nats.Msg)
+	ProduceSync(ctx context.Context, msg *nats.Msg) error
 }

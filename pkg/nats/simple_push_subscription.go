@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type pushSubscription struct {
+type simplePushChanSubscription struct {
 	natsSubs *nats.Subscription
 	natsConn *nats.Conn
 
@@ -23,9 +23,24 @@ type pushSubscription struct {
 	logger *zap.Logger
 }
 
-func (s *pushSubscription) Healthcheck(ctx context.Context) bool {
+func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
+	s.natsConn = newConn
+
+	err := s.tryResubscribe()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
+}
+
+func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats connection")
+		s.logger.Warn("consumer lost nats originConn")
 
 		return false
 	}
@@ -33,21 +48,17 @@ func (s *pushSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsSubs.IsValid() {
 		s.logger.Warn("consumer lost nats subscription")
 
-		if s.autoReSubscribe {
-			return s.tryResubscribe(ctx)
-		}
-
 		return false
 	}
 
 	return true
 }
 
-func (s *pushSubscription) Init(ctx context.Context) error {
+func (s *simplePushChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *pushSubscription) Run(ctx context.Context) error {
+func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 	if err != nil {
 		return err
@@ -58,30 +69,48 @@ func (s *pushSubscription) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *pushSubscription) tryResubscribe(ctx context.Context) bool {
-	var isSubscribed = false
+func (s *simplePushChanSubscription) Shutdown(ctx context.Context) error {
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *simplePushChanSubscription) tryResubscribe() error {
+	if !s.autoReSubscribe {
+		return nil
+	}
+
+	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
-		if err != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(err),
+		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+		if subsErr != nil {
+			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
+
+			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
 			continue
 		}
 
 		s.natsSubs = subs
-		isSubscribed = true
 
 		s.logger.Info("re-subscription success")
 		break
 	}
 
-	return isSubscribed
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func newPushSubscriptionService(logger *zap.Logger,
+func newSimplePushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
 
 	subjectName string,
@@ -92,10 +121,10 @@ func newPushSubscriptionService(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	msgChannel chan *nats.Msg,
-) *pushSubscription {
+) *simplePushChanSubscription {
 	l := logger.Named("subscription")
 
-	return &pushSubscription{
+	return &simplePushChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
