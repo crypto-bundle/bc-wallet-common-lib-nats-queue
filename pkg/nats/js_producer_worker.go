@@ -73,7 +73,7 @@ func (ww *jsProducerWorkerWrapper) Stop() {
 
 func newJsProducerWorker(logger *zap.Logger,
 	natsProducerConn nats.JetStreamContext,
-	workerNum uint16,
+	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
@@ -82,7 +82,7 @@ func newJsProducerWorker(logger *zap.Logger,
 	l := logger.Named("producer.service.worker").
 		With(zap.String(QueueStreamNameTag, streamName),
 			zap.Strings(QueueSubjectNameTag, subjects),
-			zap.Uint16(WorkerUnitNumberTag, workerNum))
+			zap.Uint32(WorkerUnitNumberTag, workerNum))
 
 	return &jsProducerWorkerWrapper{
 		logger:           l,
