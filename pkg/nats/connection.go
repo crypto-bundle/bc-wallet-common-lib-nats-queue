@@ -103,7 +103,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 func NewConnection(ctx context.Context,
 	cfg configParams,
 	logger *zap.Logger,
-) (*Connection, error) {
+) *Connection {
 	options := make([]nats.Option, 0)
 	if cfg.IsRetryOnConnectionFailed() {
 		options = append(options, nats.RetryOnFailedConnect(true),
@@ -126,5 +126,5 @@ func NewConnection(ctx context.Context,
 		consumerCounter: -1,
 	}
 
-	return conn, nil
+	return conn
 }
