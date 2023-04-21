@@ -43,6 +43,8 @@ func (c *Connection) Connect() error {
 	inst.SetDisconnectErrHandler(c.onDisconnect)
 	inst.SetReconnectHandler(c.onReconnect)
 
+	c.originConn = inst
+
 	return nil
 }
 
