@@ -3,6 +3,7 @@ package nats
 import (
 	"context"
 	"go.uber.org/zap"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 )
 
 type Connection struct {
+	mu sync.Mutex
+
 	originConn *nats.Conn
 
 	cfg     configParams

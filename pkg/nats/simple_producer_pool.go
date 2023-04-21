@@ -81,7 +81,7 @@ func NewSimpleProducerWorkersPool(logger *zap.Logger,
 	workersCount uint16,
 	subjectName string,
 	groupName string,
-) (*simpleProducerWorkerPool, error) {
+) *simpleProducerWorkerPool {
 	l := logger.Named("producer.service").
 		With(zap.String(QueueSubjectNameTag, subjectName))
 
@@ -107,5 +107,5 @@ func NewSimpleProducerWorkersPool(logger *zap.Logger,
 		workersPool.workers[i] = ww
 	}
 
-	return workersPool, nil
+	return workersPool
 }

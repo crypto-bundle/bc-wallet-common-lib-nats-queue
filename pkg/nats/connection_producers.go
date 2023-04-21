@@ -1,8 +1,6 @@
 package nats
 
 import (
-	"sync/atomic"
-
 	"github.com/nats-io/nats.go"
 )
 
@@ -12,10 +10,14 @@ func (c *Connection) NewJsProducerWorkersPool(
 	subjects []string,
 	storageType nats.StorageType,
 ) *jsProducerWorkerPool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	producer := NewJsProducerWorkersPool(c.logger, c.originConn, workersCount,
 		streamName, subjects, storageType)
 
-	c.producers[atomic.AddInt64(&c.producersCounter, 1)] = producer
+	c.producers = append(c.producers, producer)
+	c.producersCounter++
 
 	return producer
 }
@@ -24,13 +26,14 @@ func (c *Connection) NewSimpleProducerWorkersPool(
 	workersCount uint16,
 	subjectName string,
 	groupName string,
-) (*simpleProducerWorkerPool, error) {
-	producer, err := NewSimpleProducerWorkersPool(c.logger, c.originConn, workersCount, subjectName, groupName)
-	if err != nil {
-		return nil, err
-	}
+) *simpleProducerWorkerPool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	c.producers[atomic.AddInt64(&c.producersCounter, 1)] = producer
+	producer := NewSimpleProducerWorkersPool(c.logger, c.originConn, workersCount, subjectName, groupName)
 
-	return producer, nil
+	c.producers = append(c.producers, producer)
+	c.producersCounter++
+
+	return producer
 }
