@@ -3,8 +3,6 @@ package nats
 import (
 	"sync/atomic"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
@@ -51,8 +49,7 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(workersCount uint16,
 	return jsConsumer
 }
 
-func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
-	workersCount uint16,
+func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(workersCount uint16,
 	subjectName string,
 	queueGroupName string,
 
