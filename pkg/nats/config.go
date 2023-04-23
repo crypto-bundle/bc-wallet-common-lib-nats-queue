@@ -18,9 +18,15 @@ type NatsConfig struct {
 
 	NatsWorkersPerConsumer uint16 `envconfig:"NATS_WORKER_PER_CONSUMER" default:"5"`
 
-	NatsSubscriptionRetry        bool          `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY" default:"true"`
-	NatsSubscriptionRetryCount   uint16        `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY_COUNT" default:"3"`
-	NatsSubscriptionRetryTimeout time.Duration `envconfig:"NATS_WORKER_SUBSCRIPTION_RETRY_TIMEOUT" default:"3s"`
+	// NatsSubscriptionRetry - config option for enable re-subscription of consumer
+	NatsSubscriptionRetry bool `envconfig:"NATS_SUBSCRIPTION_RETRY" default:"true"`
+	// NatsSubscriptionRetryCount - config option for limiting re-subscription count
+	NatsSubscriptionRetryCount uint16 `envconfig:"NATS_SUBSCRIPTION_RETRY_COUNT" default:"3"`
+	// NatsSubscriptionRetryTimeout - config option for sets timeout between re-subscription tries
+	NatsSubscriptionRetryTimeout time.Duration `envconfig:"NATS_SUBSCRIPTION_RETRY_TIMEOUT" default:"3s"`
+
+	// NatsSubscriptionReDeliveryTimeout - config option for sett nats.AckWait on consumer subscription level
+	NatsSubscriptionReDeliveryTimeout time.Duration `envconfig:"NATS_SUBSCRIPTION_REDELIVERY_TIMEOUT" default:"3s"`
 
 	nastAddresses []string
 }

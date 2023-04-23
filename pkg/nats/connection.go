@@ -4,7 +4,6 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -26,10 +25,10 @@ type Connection struct {
 	retryTimeOut time.Duration
 	retryCount   uint16
 
-	consumerCounter int64
+	consumerCounter uint64
 	consumers       []consumerService
 
-	producersCounter int64
+	producersCounter uint64
 	producers        []producerService
 }
 
@@ -62,19 +61,22 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	c.logger.Warn("received on DisconnectErr event - calling OnDisconnect on all consumers/producers",
 		zap.Error(err))
 
-	for i := int64(0); i != atomic.LoadInt64(&c.producersCounter); i++ {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i := uint64(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnDisconnect(conn, err)
 		if producerErr != nil {
 			c.logger.Warn("unable to call onDisconnect on producer",
-				zap.Error(producerErr), zap.Int64(ProducerIndex, i))
+				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
 		}
 	}
 
-	for i := int64(0); i != atomic.LoadInt64(&c.consumerCounter); i++ {
+	for i := uint64(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
 			c.logger.Warn("unable to call onDisconnect on consumer",
-				zap.Error(consumerErr), zap.Int64(ConsumerIndex, i))
+				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
 		}
 	}
 }
@@ -84,19 +86,22 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 
 	c.logger.Warn("received on OnReconnect event - calling OnReconnect on all consumers/producers")
 
-	for i := int64(0); i != atomic.LoadInt64(&c.producersCounter); i++ {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i := uint64(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnReconnect(newConn)
 		if producerErr != nil {
-			c.logger.Warn("unable to call onDisconnect on producer",
-				zap.Error(producerErr), zap.Int64(ProducerIndex, i))
+			c.logger.Warn("unable to call onReconnect on producer",
+				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
 		}
 	}
 
-	for i := int64(0); i != atomic.LoadInt64(&c.consumerCounter); i++ {
+	for i := uint64(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnReconnect(newConn)
 		if consumerErr != nil {
-			c.logger.Warn("unable to call onDisconnect on consumer",
-				zap.Error(consumerErr), zap.Int64(ConsumerIndex, i))
+			c.logger.Warn("unable to call onReconnect on consumer",
+				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
 		}
 	}
 }
@@ -123,9 +128,11 @@ func NewConnection(ctx context.Context,
 
 		cfg: cfg,
 
-		retryCount:      cfg.GetNatsConnectionRetryCount(),
-		retryTimeOut:    cfg.GetNatsConnectionRetryTimeout(),
-		consumerCounter: -1,
+		retryCount:   cfg.GetNatsConnectionRetryCount(),
+		retryTimeOut: cfg.GetNatsConnectionRetryTimeout(),
+		
+		consumerCounter:  0,
+		producersCounter: 0,
 	}
 
 	return conn

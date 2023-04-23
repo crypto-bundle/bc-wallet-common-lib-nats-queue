@@ -2,6 +2,7 @@ package nats
 
 import (
 	"context"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -65,7 +66,7 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 		}
 
 	case decisionDirective == DirectiveForReQueue:
-		nakErr := msg.Nak()
+		nakErr := msg.Nak(nats.AckWait(time.Second * 6))
 		if nakErr != nil {
 			ww.logger.Error("unable to RE-QUEUE message", zap.Error(nakErr), zap.Any("message", msg))
 		}
