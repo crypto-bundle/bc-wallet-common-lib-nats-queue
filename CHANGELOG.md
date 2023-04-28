@@ -5,7 +5,7 @@
 ### Changed
 
 #### Switching to a proprietary license.
-License of **bc-wallet-common-lib-nats-queue** repository changed to proprietary.
+License of **bc-wallet-common-lib-nats-queue** repository changed to proprietary - commit revision number **5b3d003be0dbb5cd0a4aa1ac942ac84827ba4595**.
 
 Origin repository - https://github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
 
