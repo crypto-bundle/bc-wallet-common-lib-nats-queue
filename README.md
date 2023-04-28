@@ -22,4 +22,6 @@ Library contains wrapper service components for multiple consumer-subscription t
 
 ## Licence
 
-**bc-wallet-common-lib-nats-queue** is licensed under the [MIT](./LICENSE) License.
+**bc-wallet-common-lib-nats-queue** has a proprietary license.
+
+Switched to proprietary license from MIT - [CHANGELOG.MD - v0.0.14](./CHANGELOG.md)
