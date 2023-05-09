@@ -23,3 +23,9 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
 ## [v0.1.10] - 09.05.2023
 ### Changed
 * Added Nats helm-chart for local development. Chart cloned from [official Nats repository](https://github.com/nats-io/k8s/tree/main/helm/charts/nats)
+
+## [v0.1.11] - 09.05.2023
+### Changed
+* Helm-chart changes:
+  * Metrics exporter - set enabled state to false
+  * NatsBox containers - set enabled state to false
