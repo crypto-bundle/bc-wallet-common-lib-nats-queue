@@ -532,7 +532,7 @@ bootconfig:
 # https://github.com/nats-io/nats-box
 #
 natsbox:
-  enabled: true
+  enabled: false
   image:
     repository: natsio/nats-box
     tag: 0.13.8
@@ -603,7 +603,7 @@ natsbox:
 
 # The NATS config reloader image to use.
 reloader:
-  enabled: true
+  enabled: false
   image:
     repository: natsio/nats-server-config-reloader
     tag: 0.10.1
@@ -620,7 +620,7 @@ reloader:
 
 # Prometheus NATS Exporter configuration.
 exporter:
-  enabled: true
+  enabled: false
   image:
     repository: natsio/prometheus-nats-exporter
     tag: 0.11.0
