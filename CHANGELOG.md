@@ -21,11 +21,15 @@ gudron2s@gmail.com
 E456BB23A18A9347E952DBC6655133DD561BF3EC
 
 ## [v0.1.10] - 09.05.2023
-### Changed
-* Added Nats helm-chart for local development. Chart cloned from [official Nats repository](https://github.com/nats-io/k8s/tree/main/helm/charts/nats)
+### Added
+* Nats helm-chart for local development. Chart cloned from [official Nats repository](https://github.com/nats-io/k8s/tree/main/helm/charts/nats)
 
 ## [v0.1.11] - 09.05.2023
 ### Changed
 * Helm-chart changes:
   * Metrics exporter - set enabled state to false
   * NatsBox containers - set enabled state to false
+
+## [v0.1.12] - 13.06.2023
+### Changed
+* Nats-config - added secret go-tag to nats user and password fields
