@@ -7,8 +7,8 @@ import (
 
 type NatsConfig struct {
 	NatsAddresses string `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
-	NatsUser      string `envconfig:"NATS_USER" default:"nats"`
-	NatsPassword  string `envconfig:"NATS_PASSWORD" default:"password"`
+	NatsUser      string `envconfig:"NATS_USER" required:"true" secret:"true"`
+	NatsPassword  string `envconfig:"NATS_PASSWORD" required:"true" secret:"true"`
 
 	NatsConnectionRetryOnFailed bool          `envconfig:"NATS_CONNECTION_RETRY" default:"true"`
 	NatsConnectionRetryCount    uint16        `envconfig:"NATS_CONNECTION_RETRY_COUNT" default:"30"`
