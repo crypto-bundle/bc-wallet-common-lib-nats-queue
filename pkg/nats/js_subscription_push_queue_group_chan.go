@@ -19,6 +19,7 @@ type jsPushQueueGroupChanSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	msgChannel chan *nats.Msg
 
@@ -79,7 +80,8 @@ func (s *jsPushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
 }
 
 func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
+		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -137,6 +139,7 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	msgChannel chan *nats.Msg,
+	subOpt ...nats.SubOpt,
 ) *jsPushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
 
@@ -150,6 +153,7 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
 		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		subscribeNatsOptions:   subOpt,
 
 		msgChannel: msgChannel,
 		logger:     l,

@@ -22,14 +22,13 @@ type jsPullChanSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	fetchInterval time.Duration
 	fetchTimeout  time.Duration
 	fetchLimit    uint
 
 	ticker *time.Ticker
-
-	options []nats.SubOpt
 
 	logger *zap.Logger
 }
@@ -84,7 +83,7 @@ func (s *jsPullChanSubscription) Init(ctx context.Context) error {
 }
 
 func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -185,6 +184,7 @@ func newJsPullChanSubscriptionService(logger *zap.Logger,
 	fetchTimeout time.Duration,
 	fetchLimit uint,
 	msgChannel chan *nats.Msg,
+	subOpt ...nats.SubOpt,
 ) *jsPullChanSubscription {
 	l := logger.Named("subscription")
 
@@ -197,6 +197,7 @@ func newJsPullChanSubscriptionService(logger *zap.Logger,
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
 		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		subscribeNatsOptions:   subOpt,
 
 		fetchInterval: fetchInterval,
 		fetchLimit:    fetchLimit,

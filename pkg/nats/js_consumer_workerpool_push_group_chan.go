@@ -82,6 +82,7 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsPushTypeChannelConsumerWorkerPool {
 	l := logger.Named("queue_consumer_pool.service")
 
@@ -90,7 +91,7 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(l, natsConn,
 		subjectName, queueGroupName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		msgChannel)
+		msgChannel, subOpt...)
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler:         handler,

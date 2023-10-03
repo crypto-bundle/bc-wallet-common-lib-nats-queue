@@ -86,6 +86,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsConsumerPushQueueGroupSingeWorker {
 	l := logger.Named("consumer_worker_pool")
 
@@ -99,6 +100,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn,
 		subjectName, queueGroupName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout, ww.ProcessMsg,
+		subOpt...,
 	)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{

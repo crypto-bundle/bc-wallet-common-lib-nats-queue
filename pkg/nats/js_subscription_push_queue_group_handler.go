@@ -19,6 +19,7 @@ type jsPushQueueGroupHandlerSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	handler func(msg *nats.Msg)
 
@@ -86,7 +87,8 @@ func (s *jsPushQueueGroupHandlerSubscription) Shutdown(ctx context.Context) erro
 }
 
 func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName, s.handler)
+	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
+		s.handler, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -104,7 +106,8 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName, s.handler)
+		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
+			s.handler, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -139,6 +142,7 @@ func newJsPushQueueGroupHandlerSubscription(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	handler func(msg *nats.Msg),
+	subOpt ...nats.SubOpt,
 ) *jsPushQueueGroupHandlerSubscription {
 	l := logger.Named("subscription")
 
@@ -152,6 +156,7 @@ func newJsPushQueueGroupHandlerSubscription(logger *zap.Logger,
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
 		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		subscribeNatsOptions:   subOpt,
 
 		handler: handler,
 		logger:  l,

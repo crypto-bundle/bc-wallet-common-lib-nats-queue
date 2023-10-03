@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"github.com/nats-io/nats.go"
 	"time"
 )
 
@@ -13,6 +14,7 @@ func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
 	autoReSubscribeTimeout time.Duration,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsConsumerPushQueueGroupSingeWorker {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -20,7 +22,7 @@ func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
 	jsConsumer := NewJsConsumerPushQueueGroupSingeWorker(c.logger, c.originConn, subjectName,
 		queueGroupName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		handler)
+		handler, subOpt...)
 
 	c.consumers = append(c.consumers, jsConsumer)
 	c.consumerCounter++
@@ -40,6 +42,7 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(workersCount uint16,
 	fetchLimit uint,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsPullTypeChannelConsumerWorkerPool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -48,7 +51,7 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(workersCount uint16,
 		subjectName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
 		fetchInterval, fetchTimeout, fetchLimit,
-		handler)
+		handler, subOpt...)
 
 	c.consumers = append(c.consumers, jsConsumer)
 	c.consumerCounter++
@@ -65,6 +68,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(workersCount uint16
 	autoReSubscribeTimeout time.Duration,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsPushTypeChannelConsumerWorkerPool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -72,7 +76,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(workersCount uint16
 	jsConsumer := NewJsPushTypeChannelConsumerWorkersPool(c.logger, c.originConn, workersCount,
 		subjectName, queueGroupName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		handler)
+		handler, subOpt...)
 
 	c.consumers = append(c.consumers, jsConsumer)
 	c.consumerCounter++

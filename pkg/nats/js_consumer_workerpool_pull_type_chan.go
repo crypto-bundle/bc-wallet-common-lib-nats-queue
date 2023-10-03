@@ -107,12 +107,13 @@ func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 	fetchLimit uint,
 
 	handler consumerHandler,
+	subOpt ...nats.SubOpt,
 ) *jsPullTypeChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, workersCount)
 
 	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn,
 		subjectName, autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		fetchInterval, fetchTimeout, fetchLimit, msgChannel)
+		fetchInterval, fetchTimeout, fetchLimit, msgChannel, subOpt...)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
 		handler:        handler,

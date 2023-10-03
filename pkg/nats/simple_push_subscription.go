@@ -12,7 +12,6 @@ type simplePushChanSubscription struct {
 	natsConn *nats.Conn
 
 	subjectName string
-	groupName   string
 
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
@@ -59,7 +58,7 @@ func (s *simplePushChanSubscription) Init(ctx context.Context) error {
 }
 
 func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+	subs, err := s.natsConn.ChanSubscribe(s.subjectName, s.msgChannel)
 	if err != nil {
 		return err
 	}
@@ -86,7 +85,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+		subs, subsErr := s.natsConn.ChanSubscribe(s.subjectName, s.msgChannel)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -114,7 +113,6 @@ func newSimplePushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
 
 	subjectName string,
-	groupName string,
 
 	autoReSubscribe bool,
 	autoReSubscribeCount uint16,
@@ -129,7 +127,6 @@ func newSimplePushSubscriptionService(logger *zap.Logger,
 		natsSubs: nil, // it will be set @ run stage
 
 		subjectName: subjectName,
-		groupName:   groupName,
 
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
