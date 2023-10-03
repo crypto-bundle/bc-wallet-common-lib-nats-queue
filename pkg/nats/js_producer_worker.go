@@ -61,9 +61,6 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 		return ErrNilPubAck
 	}
 
-	ww.logger.Info("received pubAck", zap.String(QueuePubAckStreamNameTag, pubAck.Stream),
-		zap.Uint64(QueuePubAckSequenceTag, pubAck.Sequence))
-
 	return nil
 }
 
