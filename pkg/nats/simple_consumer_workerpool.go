@@ -85,7 +85,7 @@ func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 
 	msgChannel := make(chan *nats.Msg, workersCount)
 
-	subscriptionSrv := newSimplePushSubscriptionService(l, natsConn,
+	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(l, natsConn,
 		subjectName, groupName,
 		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
 		msgChannel)
