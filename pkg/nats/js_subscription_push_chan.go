@@ -2,9 +2,10 @@ package nats
 
 import (
 	"context"
+	"time"
+	
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type jsPushSubscription struct {

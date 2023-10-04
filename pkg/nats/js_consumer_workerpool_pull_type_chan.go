@@ -2,15 +2,9 @@ package nats
 
 import (
 	"context"
-	"errors"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-)
-
-var (
-	ErrNilSubscribeInfo = errors.New("receive nil subscribe info")
 )
 
 // jsPullTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -94,36 +88,22 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Shutdown(ctx context.Context) err
 
 func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 	jsNatsConn *nats.Conn,
-
-	workersCount uint16,
-	subjectName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	fetchInterval time.Duration,
-	fetchTimeout time.Duration,
-	fetchLimit uint,
-
+	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
-	subOpt ...nats.SubOpt,
 ) *jsPullTypeChannelConsumerWorkerPool {
-	msgChannel := make(chan *nats.Msg, workersCount)
+	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn,
-		subjectName, autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		fetchInterval, fetchTimeout, fetchLimit, msgChannel, subOpt...)
+	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
 		handler:        handler,
 		logger:         logger,
 		msgChannel:     msgChannel,
-		subjectName:    subjectName,
+		subjectName:    consumerCfg.GetSubjectName(),
 		pullSubscriber: pullSubscriber,
 	}
 
-	for i := uint16(0); i < workersCount; i++ {
+	for i := uint16(0); i < uint16(consumerCfg.GetWorkersCount()); i++ {
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),

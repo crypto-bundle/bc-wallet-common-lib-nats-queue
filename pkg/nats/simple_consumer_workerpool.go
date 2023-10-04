@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 // simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -70,25 +69,15 @@ func (wp *simpleConsumerWorkerPool) Shutdown(ctx context.Context) error {
 
 func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 	natsConn *nats.Conn,
-	workersCount uint16,
-
-	subjectName string,
-	groupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *simpleConsumerWorkerPool {
 	l := logger.Named("consumer_pool")
 
-	msgChannel := make(chan *nats.Msg, workersCount)
+	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
 	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(l, natsConn,
-		subjectName, groupName,
-		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		msgChannel)
+		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
 		handler: handler,
@@ -99,12 +88,12 @@ func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 		msgChannel: msgChannel,
 	}
 
-	for i := uint16(0); i < workersCount; i++ {
+	for i := uint(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &consumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),
 			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint16(WorkerUnitNumberTag, i)),
+			logger:           l.With(zap.Uint(WorkerUnitNumberTag, i)),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

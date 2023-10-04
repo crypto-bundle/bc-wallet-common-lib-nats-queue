@@ -3,9 +3,10 @@ package nats
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type jsPullChanSubscription struct {
@@ -19,10 +20,10 @@ type jsPullChanSubscription struct {
 	durableName string
 	durable     bool
 
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
+	autoReSubscribe      bool
+	autoReSubscribeCount uint16
+	autoReSubscribeDelay time.Duration
+	subscribeNatsOptions []nats.SubOpt
 
 	fetchInterval time.Duration
 	fetchTimeout  time.Duration
@@ -154,7 +155,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 			err = subsErr
 
-			time.Sleep(s.autoReSubscribeTimeout)
+			time.Sleep(s.autoReSubscribeDelay)
 			continue
 		}
 
@@ -173,35 +174,30 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 func newJsPullChanSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	fetchInterval time.Duration,
-	fetchTimeout time.Duration,
-	fetchLimit uint,
+	consumerCfg consumerConfigPullType,
 	msgChannel chan *nats.Msg,
-	subOpt ...nats.SubOpt,
 ) *jsPullChanSubscription {
 	l := logger.Named("subscription")
+
+	var subOptions []nats.SubOpt
+	if consumerCfg.GetBackOff() != nil {
+		subOptions = append(subOptions, nats.BackOff(consumerCfg.GetBackOff()))
+	}
 
 	return &jsPullChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName: subjectName,
+		subjectName: consumerCfg.GetSubjectName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
-		subscribeNatsOptions:   subOpt,
+		autoReSubscribe:      consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount: consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeDelay: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions: subOptions,
 
-		fetchInterval: fetchInterval,
-		fetchLimit:    fetchLimit,
-		fetchTimeout:  fetchTimeout,
+		fetchInterval: consumerCfg.GetFetchInterval(),
+		fetchLimit:    consumerCfg.GetFetchLimit(),
+		fetchTimeout:  consumerCfg.GetFetchTimeout(),
 
 		msgChannel: msgChannel,
 

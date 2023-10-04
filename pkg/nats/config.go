@@ -91,3 +91,47 @@ func (c *NatsConfig) Prepare() error {
 func (c *NatsConfig) PrepareWith(dependenciesCfgSrvList ...interface{}) error {
 	return nil
 }
+
+type ConsumerConfig struct {
+	SubjectName string
+
+	AutoReSubscribeEnabled bool
+	AutoResubscribeCount   uint16
+	AutoResubscribeDelay   time.Duration
+
+	NakDelay       time.Duration
+	BackOffTimings []time.Duration
+}
+
+func (c *ConsumerConfig) GetSubjectName() string {
+	return c.SubjectName
+}
+
+func (c *ConsumerConfig) IsAutoReSubscribeEnabled() bool {
+	return c.AutoReSubscribeEnabled
+}
+
+func (c *ConsumerConfig) GetAutoResubscribeCount() uint16 {
+	return c.AutoResubscribeCount
+}
+
+func (c *ConsumerConfig) GetAutoResubscribeDelay() time.Duration {
+	return c.AutoResubscribeDelay
+}
+
+func (c *ConsumerConfig) GetNakDelay() time.Duration {
+	return c.NakDelay
+}
+
+func (c *ConsumerConfig) GetBackOff() []time.Duration {
+	return c.BackOffTimings
+}
+
+type ConsumerConfigGrouped struct {
+	ConsumerConfig
+	QueueGroupName string
+}
+
+func (c *ConsumerConfigGrouped) GetQueueGroupName() string {
+	return c.QueueGroupName
+}

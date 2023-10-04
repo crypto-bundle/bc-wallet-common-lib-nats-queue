@@ -112,14 +112,7 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 
 func newSimplePushQueueGroupSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	groupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *simplePushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
@@ -128,12 +121,12 @@ func newSimplePushQueueGroupSubscriptionService(logger *zap.Logger,
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName: subjectName,
-		groupName:   groupName,
+		subjectName: consumerCfg.GetSubjectName(),
+		groupName:   consumerCfg.GetQueueGroupName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
 		msgChannel: msgChannel,
 		logger:     l,

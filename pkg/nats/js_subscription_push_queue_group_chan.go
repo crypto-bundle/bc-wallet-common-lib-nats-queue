@@ -130,30 +130,27 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
-	subOpt ...nats.SubOpt,
 ) *jsPushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
+
+	var subOptions []nats.SubOpt
+	if consumerCfg.GetBackOff() != nil {
+		subOptions = append(subOptions, nats.BackOff(consumerCfg.GetBackOff()))
+	}
 
 	return &jsPushQueueGroupChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName:    subjectName,
-		queueGroupName: queueGroupName,
+		subjectName:    consumerCfg.GetSubjectName(),
+		queueGroupName: consumerCfg.GetQueueGroupName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
-		subscribeNatsOptions:   subOpt,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
 		logger:     l,

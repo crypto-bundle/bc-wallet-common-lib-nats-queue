@@ -17,7 +17,7 @@ type simplePushChanSubscription struct {
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
 
-	msgChannel chan *nats.Msg
+	handler func(msg *nats.Msg)
 
 	logger *zap.Logger
 }
@@ -58,7 +58,7 @@ func (s *simplePushChanSubscription) Init(ctx context.Context) error {
 }
 
 func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.natsConn.ChanSubscribe(s.subjectName, s.msgChannel)
+	subs, err := s.natsConn.Subscribe(s.subjectName, s.handler)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.natsConn.ChanSubscribe(s.subjectName, s.msgChannel)
+		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -111,14 +111,8 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 func newSimplePushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	msgChannel chan *nats.Msg,
+	consumerCfg consumerConfig,
+	handler func(msg *nats.Msg),
 ) *simplePushChanSubscription {
 	l := logger.Named("subscription")
 
@@ -126,13 +120,14 @@ func newSimplePushSubscriptionService(logger *zap.Logger,
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName: subjectName,
+		subjectName: consumerCfg.GetSubjectName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
-		msgChannel: msgChannel,
-		logger:     l,
+		handler: handler,
+
+		logger: l,
 	}
 }
