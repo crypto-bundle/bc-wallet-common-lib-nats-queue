@@ -20,8 +20,8 @@ type configParams interface {
 }
 
 type consumerConfig interface {
-	GetWorkersCount() uint
-	
+	GetWorkersCount() uint32
+
 	GetSubjectName() string
 
 	IsAutoReSubscribeEnabled() bool
