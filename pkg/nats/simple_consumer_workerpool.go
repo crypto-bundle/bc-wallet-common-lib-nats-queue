@@ -88,12 +88,12 @@ func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 		msgChannel: msgChannel,
 	}
 
-	for i := uint(0); i < consumerCfg.GetWorkersCount(); i++ {
+	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &consumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),
 			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint(WorkerUnitNumberTag, i)),
+			logger:           l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

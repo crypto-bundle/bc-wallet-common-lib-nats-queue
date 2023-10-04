@@ -89,12 +89,12 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 		subscriptionSrv: subscriptionSrv,
 	}
 
-	for i := uint(0); i < consumerCfg.GetWorkersCount(); i++ {
+	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),
 			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint(WorkerUnitNumberTag, i)),
+			logger:           l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

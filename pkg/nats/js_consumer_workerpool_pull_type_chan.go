@@ -103,7 +103,7 @@ func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 		pullSubscriber: pullSubscriber,
 	}
 
-	for i := uint16(0); i < uint16(consumerCfg.GetWorkersCount()); i++ {
+	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),
