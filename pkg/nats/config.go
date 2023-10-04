@@ -95,6 +95,8 @@ func (c *NatsConfig) PrepareWith(dependenciesCfgSrvList ...interface{}) error {
 type ConsumerConfig struct {
 	SubjectName string
 
+	WorkersCount uint32
+
 	AutoReSubscribeEnabled bool
 	AutoResubscribeCount   uint16
 	AutoResubscribeDelay   time.Duration
@@ -125,6 +127,10 @@ func (c *ConsumerConfig) GetNakDelay() time.Duration {
 
 func (c *ConsumerConfig) GetBackOff() []time.Duration {
 	return c.BackOffTimings
+}
+
+func (c *ConsumerConfig) GetWorkersCount() uint32 {
+	return c.WorkersCount
 }
 
 type ConsumerConfigGrouped struct {
