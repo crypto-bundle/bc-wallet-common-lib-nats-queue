@@ -3,7 +3,7 @@ package nats
 import (
 	"context"
 	"time"
-	
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 )
@@ -76,7 +76,7 @@ func (s *jsPushSubscription) Init(ctx context.Context) error {
 }
 
 func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel)
+	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}

@@ -109,6 +109,7 @@ func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 			stopWorkerChanel: make(chan bool),
 			handler:          workersPool.handler,
 			logger:           logger,
+			reQueueDelay:     consumerCfg.GetNakDelay(),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)
