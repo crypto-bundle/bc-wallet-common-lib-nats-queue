@@ -33,3 +33,11 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
 ## [v0.1.12] - 13.06.2023
 ### Changed
 * Nats-config - added secret go-tag to nats user and password fields
+
+## [v0.1.13] - 08.10.2023
+### Added
+* Added NATS consumer config structs for
+  * QueueGroup consumers
+  * Standart consumers
+* Added ReQueue delay option for Nack message case
+* Added passing SubOptions for all type of consumers

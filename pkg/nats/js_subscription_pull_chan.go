@@ -3,9 +3,10 @@ package nats
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type jsPullChanSubscription struct {
@@ -19,17 +20,16 @@ type jsPullChanSubscription struct {
 	durableName string
 	durable     bool
 
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
+	autoReSubscribe      bool
+	autoReSubscribeCount uint16
+	autoReSubscribeDelay time.Duration
+	subscribeNatsOptions []nats.SubOpt
 
 	fetchInterval time.Duration
 	fetchTimeout  time.Duration
 	fetchLimit    uint
 
 	ticker *time.Ticker
-
-	options []nats.SubOpt
 
 	logger *zap.Logger
 }
@@ -84,7 +84,7 @@ func (s *jsPullChanSubscription) Init(ctx context.Context) error {
 }
 
 func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -148,14 +148,14 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
 
 			err = subsErr
 
-			time.Sleep(s.autoReSubscribeTimeout)
+			time.Sleep(s.autoReSubscribeDelay)
 			continue
 		}
 
@@ -174,33 +174,30 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 func newJsPullChanSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	fetchInterval time.Duration,
-	fetchTimeout time.Duration,
-	fetchLimit uint,
+	consumerCfg consumerConfigPullType,
 	msgChannel chan *nats.Msg,
 ) *jsPullChanSubscription {
 	l := logger.Named("subscription")
+
+	var subOptions []nats.SubOpt
+	if consumerCfg.GetBackOff() != nil {
+		subOptions = append(subOptions, nats.BackOff(consumerCfg.GetBackOff()))
+	}
 
 	return &jsPullChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName: subjectName,
+		subjectName: consumerCfg.GetSubjectName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:      consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount: consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeDelay: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions: subOptions,
 
-		fetchInterval: fetchInterval,
-		fetchLimit:    fetchLimit,
-		fetchTimeout:  fetchTimeout,
+		fetchInterval: consumerCfg.GetFetchInterval(),
+		fetchLimit:    consumerCfg.GetFetchLimit(),
+		fetchTimeout:  consumerCfg.GetFetchTimeout(),
 
 		msgChannel: msgChannel,
 

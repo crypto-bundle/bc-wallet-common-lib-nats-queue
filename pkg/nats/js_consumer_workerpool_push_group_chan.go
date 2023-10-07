@@ -2,9 +2,9 @@ package nats
 
 import (
 	"context"
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 // jsPushTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -73,23 +73,14 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Shutdown(ctx context.Context) err
 
 func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	natsConn *nats.Conn,
-	workersCount uint16,
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsPushTypeChannelConsumerWorkerPool {
 	l := logger.Named("queue_consumer_pool.service")
 
-	msgChannel := make(chan *nats.Msg, workersCount)
+	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(l, natsConn,
-		subjectName, queueGroupName,
-		autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
+	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(l, natsConn, consumerCfg,
 		msgChannel)
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
@@ -98,12 +89,13 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 		subscriptionSrv: subscriptionSrv,
 	}
 
-	for i := uint16(0); i < workersCount; i++ {
+	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:       msgChannel,
 			stopWorkerChanel: make(chan bool),
 			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint16(WorkerUnitNumberTag, i)),
+			logger:           l.With(zap.Uint32(WorkerUnitNumberTag, i)),
+			reQueueDelay:     consumerCfg.GetNakDelay(),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

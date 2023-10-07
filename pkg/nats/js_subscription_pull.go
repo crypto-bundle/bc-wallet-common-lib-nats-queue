@@ -22,14 +22,13 @@ type jsPullSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	fetchInterval time.Duration
 	fetchTimeout  time.Duration
 	fetchLimit    uint
 
 	ticker *time.Ticker
-
-	options []nats.SubOpt
 
 	logger *zap.Logger
 }
@@ -84,7 +83,7 @@ func (s *jsPullSubscription) Init(ctx context.Context) error {
 }
 
 func (s *jsPullSubscription) Run(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -144,7 +143,7 @@ func (s *jsPullSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.options...)
+		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -179,6 +178,7 @@ func newJsPullSubscriptionService(logger *zap.Logger,
 	fetchTimeout time.Duration,
 	fetchLimit uint,
 	handler consumerWorker,
+	subOpt ...nats.SubOpt,
 ) *jsPullSubscription {
 	l := logger.Named("subscription")
 
@@ -192,6 +192,7 @@ func newJsPullSubscriptionService(logger *zap.Logger,
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
 		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		subscribeNatsOptions:   subOpt,
 
 		fetchInterval: fetchInterval,
 		fetchTimeout:  fetchTimeout,

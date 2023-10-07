@@ -2,13 +2,12 @@ package nats
 
 import (
 	"context"
-
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 )
 
-// jsPushTypeQueueGroupConsumer is a minimal Worker implementation that simply wraps a
-type jsConsumerPushQueueGroupSingeWorker struct {
+// simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps a
+type simpleConsumerSingeWorker struct {
 	subscriptionSrv subscriptionService
 
 	handler func(msg *nats.Msg)
@@ -17,7 +16,7 @@ type jsConsumerPushQueueGroupSingeWorker struct {
 	logger *zap.Logger
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) error {
+func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
 	err := wp.subscriptionSrv.OnReconnect(conn)
 	if err != nil {
 		return err
@@ -26,7 +25,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) erro
 	return nil
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err error) error {
+func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSrv.OnDisconnect(conn, err)
 	if retErr != nil {
 		return retErr
@@ -35,7 +34,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err
 	return nil
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) Init(ctx context.Context) error {
+func (wp *simpleConsumerSingeWorker) Init(ctx context.Context) error {
 	err := wp.subscriptionSrv.Init(ctx)
 	if err != nil {
 		return err
@@ -44,11 +43,11 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Init(ctx context.Context) error {
 	return nil
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) Healthcheck(ctx context.Context) bool {
+func (wp *simpleConsumerSingeWorker) Healthcheck(ctx context.Context) bool {
 	return wp.subscriptionSrv.Healthcheck(ctx)
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
+func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 	err := wp.subscriptionSrv.Subscribe(ctx)
 	if err != nil {
 		return err
@@ -57,7 +56,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func (wp *jsConsumerPushQueueGroupSingeWorker) Shutdown(ctx context.Context) error {
+func (wp *simpleConsumerSingeWorker) Shutdown(ctx context.Context) error {
 	err := wp.subscriptionSrv.Shutdown(ctx)
 	if err != nil {
 		return err
@@ -68,7 +67,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Shutdown(ctx context.Context) err
 	return nil
 }
 
-func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
+func NewSimpleConsumerSingeWorker(logger *zap.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
@@ -83,7 +82,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 		reQueueDelay:     consumerCfg.GetNakDelay(),
 	}
 
-	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn, consumerCfg, ww.ProcessMsg)
+	subscriptionSrv := newSimplePushSubscriptionService(logger, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
 		logger:          l,

@@ -1,5 +1,7 @@
+default: deploy
+
 deploy:
-	helm --kubeconfig ~/.kube/config --kube-context docker-desktop upgrade \
+	helm --kube-context $(cluster_name) upgrade \
 		--install nats \
 		--values=./deploy/helm/nats/values.yaml \
 		--values=./deploy/helm/nats/values_$(env).yaml \

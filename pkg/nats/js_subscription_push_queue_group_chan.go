@@ -19,6 +19,7 @@ type jsPushQueueGroupChanSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	msgChannel chan *nats.Msg
 
@@ -79,7 +80,8 @@ func (s *jsPushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
 }
 
 func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
+		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,8 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
+			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(err),
 				zap.Uint16(ResubscribeTag, i))
@@ -128,28 +131,27 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *jsPushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
+
+	var subOptions []nats.SubOpt
+	if consumerCfg.GetBackOff() != nil {
+		subOptions = append(subOptions, nats.BackOff(consumerCfg.GetBackOff()))
+	}
 
 	return &jsPushQueueGroupChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName:    subjectName,
-		queueGroupName: queueGroupName,
+		subjectName:    consumerCfg.GetSubjectName(),
+		queueGroupName: consumerCfg.GetQueueGroupName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
 		logger:     l,

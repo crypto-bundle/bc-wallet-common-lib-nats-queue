@@ -7,22 +7,23 @@ import (
 	"time"
 )
 
-type simplePushChanSubscription struct {
+type simplePushQueueGroupChanSubscription struct {
 	natsSubs *nats.Subscription
 	natsConn *nats.Conn
 
 	subjectName string
+	groupName   string
 
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
 
-	handler func(msg *nats.Msg)
+	msgChannel chan *nats.Msg
 
 	logger *zap.Logger
 }
 
-func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
+func (s *simplePushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	s.natsConn = newConn
 
 	err := s.tryResubscribe()
@@ -33,11 +34,11 @@ func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+func (s *simplePushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
+func (s *simplePushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
 		s.logger.Warn("consumer lost nats originConn")
 
@@ -53,12 +54,12 @@ func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (s *simplePushChanSubscription) Init(ctx context.Context) error {
+func (s *simplePushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.natsConn.Subscribe(s.subjectName, s.handler)
+func (s *simplePushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
+	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 	if err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Shutdown(ctx context.Context) error {
+func (s *simplePushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
 	err := s.natsSubs.Drain()
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (s *simplePushChanSubscription) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) tryResubscribe() error {
+func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
@@ -85,7 +86,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
+		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -109,25 +110,25 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushSubscriptionService(logger *zap.Logger,
+func newSimplePushQueueGroupSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-	consumerCfg consumerConfig,
-	handler func(msg *nats.Msg),
-) *simplePushChanSubscription {
+	consumerCfg consumerConfigQueueGroup,
+	msgChannel chan *nats.Msg,
+) *simplePushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
 
-	return &simplePushChanSubscription{
+	return &simplePushQueueGroupChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
 		subjectName: consumerCfg.GetSubjectName(),
+		groupName:   consumerCfg.GetQueueGroupName(),
 
 		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
 		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
 		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
-		handler: handler,
-
-		logger: l,
+		msgChannel: msgChannel,
+		logger:     l,
 	}
 }

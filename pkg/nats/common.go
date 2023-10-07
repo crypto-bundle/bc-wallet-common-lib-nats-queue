@@ -19,6 +19,32 @@ type configParams interface {
 	GetWorkersCountPerConsumer() uint16
 }
 
+type consumerConfig interface {
+	GetWorkersCount() uint32
+
+	GetSubjectName() string
+
+	IsAutoReSubscribeEnabled() bool
+	GetAutoResubscribeCount() uint16
+	GetAutoResubscribeDelay() time.Duration
+	GetNakDelay() time.Duration
+	GetBackOff() []time.Duration
+}
+
+type consumerConfigQueueGroup interface {
+	consumerConfig
+
+	GetQueueGroupName() string
+}
+
+type consumerConfigPullType interface {
+	consumerConfig
+
+	GetFetchInterval() time.Duration
+	GetFetchTimeout() time.Duration
+	GetFetchLimit() uint
+}
+
 type consumerHandler interface {
 	Process(ctx context.Context, msg *nats.Msg) (ConsumerDirective, error)
 }

@@ -2,9 +2,10 @@ package nats
 
 import (
 	"context"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-	"time"
 )
 
 type jsPushSubscription struct {
@@ -18,6 +19,7 @@ type jsPushSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	msgChannel chan *nats.Msg
 
@@ -74,7 +76,7 @@ func (s *jsPushSubscription) Init(ctx context.Context) error {
 }
 
 func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel)
+	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
@@ -104,7 +106,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel)
+		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -137,6 +139,7 @@ func newJsPushSubscriptionService(logger *zap.Logger,
 	autoReSubscribeTimeout time.Duration,
 
 	msgChannel chan *nats.Msg,
+	subOpt ...nats.SubOpt,
 ) *jsPushSubscription {
 	l := logger.Named("subscription")
 
@@ -150,6 +153,7 @@ func newJsPushSubscriptionService(logger *zap.Logger,
 		autoReSubscribe:        autoReSubscribe,
 		autoReSubscribeCount:   autoReSubscribeCount,
 		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		subscribeNatsOptions:   subOpt,
 
 		msgChannel: msgChannel,
 		logger:     l,
