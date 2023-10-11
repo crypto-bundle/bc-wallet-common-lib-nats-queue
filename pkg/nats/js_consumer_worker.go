@@ -64,7 +64,7 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 		if msgMetaData.NumDelivered > ww.reQueueDelayCount {
 			delay = ww.reQueueDelay[ww.reQueueDelayCount]
 		} else {
-			delay = ww.reQueueDelay[msgMetaData.NumDelivered]
+			delay = ww.reQueueDelay[msgMetaData.NumDelivered-1]
 		}
 
 		nakErr := msg.NakWithDelay(delay)
