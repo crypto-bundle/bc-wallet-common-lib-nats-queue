@@ -27,8 +27,10 @@ type consumerConfig interface {
 	IsAutoReSubscribeEnabled() bool
 	GetAutoResubscribeCount() uint16
 	GetAutoResubscribeDelay() time.Duration
-	GetNakDelay() time.Duration
-	GetBackOff() []time.Duration
+
+	GetNakDelayTimings() []time.Duration
+	GetBackOffTimings() []time.Duration
+	GetMaxDeliveryCount() int
 }
 
 type consumerConfigQueueGroup interface {

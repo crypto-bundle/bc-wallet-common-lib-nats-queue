@@ -18,7 +18,8 @@ type jsConsumerWorkerWrapper struct {
 	logger *zap.Logger
 
 	maxRedeliveryCount uint64
-	reQueueDelay       time.Duration
+	reQueueDelayCount  uint64
+	reQueueDelay       []time.Duration
 }
 
 func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
@@ -52,14 +53,6 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 
 	decisionDirective, err := ww.handler.Process(context.Background(), msg)
 	switch {
-	case err != nil && msgMetaData.NumDelivered <= ww.maxRedeliveryCount:
-		nakErr := msg.NakWithDelay(ww.reQueueDelay * 3)
-		if nakErr != nil {
-			ww.logger.Error("unable to NACK message", zap.Error(nakErr),
-				zap.String(SubjectTag, msg.Subject),
-				zap.Uint64(DeliveredCount, msgMetaData.NumDelivered))
-		}
-
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
@@ -67,7 +60,14 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 		}
 
 	case decisionDirective == DirectiveForReQueue:
-		nakErr := msg.NakWithDelay(ww.reQueueDelay)
+		var delay time.Duration
+		if msgMetaData.NumDelivered > ww.reQueueDelayCount {
+			delay = ww.reQueueDelay[ww.reQueueDelayCount]
+		} else {
+			delay = ww.reQueueDelay[msgMetaData.NumDelivered]
+		}
+
+		nakErr := msg.NakWithDelay(delay)
 		if nakErr != nil {
 			ww.logger.Error("unable to RE-QUEUE message", zap.Error(nakErr), zap.Any("message", msg))
 		}

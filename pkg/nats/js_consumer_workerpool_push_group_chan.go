@@ -89,13 +89,16 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 		subscriptionSrv: subscriptionSrv,
 	}
 
+	requeueDelays := consumerCfg.GetNakDelayTimings()
+
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
-			msgChannel:       msgChannel,
-			stopWorkerChanel: make(chan bool),
-			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint32(WorkerUnitNumberTag, i)),
-			reQueueDelay:     consumerCfg.GetNakDelay(),
+			msgChannel:        msgChannel,
+			stopWorkerChanel:  make(chan bool),
+			handler:           workersPool.handler,
+			logger:            l.With(zap.Uint32(WorkerUnitNumberTag, i)),
+			reQueueDelay:      requeueDelays,
+			reQueueDelayCount: uint64(len(requeueDelays)),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)
