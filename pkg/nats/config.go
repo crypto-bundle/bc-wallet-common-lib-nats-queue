@@ -103,7 +103,7 @@ type ConsumerConfig struct {
 
 	NakDelayTimings  []time.Duration
 	BackOffTimings   []time.Duration
-	MaxDeliveryCount int64
+	MaxDeliveryCount int
 }
 
 func (c *ConsumerConfig) GetSubjectName() string {
@@ -126,7 +126,7 @@ func (c *ConsumerConfig) GetBackOffTimings() []time.Duration {
 	return c.BackOffTimings
 }
 
-func (c *ConsumerConfig) GetMaxDeliveryCount() int64 {
+func (c *ConsumerConfig) GetMaxDeliveryCount() int {
 	return c.MaxDeliveryCount
 }
 
