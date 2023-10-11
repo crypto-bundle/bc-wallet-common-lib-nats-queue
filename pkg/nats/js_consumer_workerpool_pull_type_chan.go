@@ -112,7 +112,7 @@ func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 			handler:           workersPool.handler,
 			logger:            logger,
 			reQueueDelay:      requeueDelays,
-			reQueueDelayCount: uint64(len(requeueDelays)),
+			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

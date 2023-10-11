@@ -83,7 +83,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 		logger:            logger,
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
-		reQueueDelayCount: uint64(len(requeueDelays)),
+		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
 	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn, consumerCfg, ww.ProcessMsg)

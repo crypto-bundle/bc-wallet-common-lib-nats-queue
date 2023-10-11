@@ -98,7 +98,7 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 			handler:           workersPool.handler,
 			logger:            l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 			reQueueDelay:      requeueDelays,
-			reQueueDelayCount: uint64(len(requeueDelays)),
+			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)
