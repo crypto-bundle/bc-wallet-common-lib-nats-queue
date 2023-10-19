@@ -102,7 +102,6 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	var err error = nil
-
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)

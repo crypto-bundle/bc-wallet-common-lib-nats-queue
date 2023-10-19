@@ -16,9 +16,8 @@ type jsProducerWorkerPool struct {
 	streamName string
 	subject    []string
 
-	storage  nats.StorageType
-	jsInfo   *nats.StreamInfo
-	jsConfig *nats.StreamConfig
+	storage nats.StorageType
+	jsInfo  *nats.StreamInfo
 
 	natsConn  *nats.Conn
 	jsNatsCtx nats.JetStreamContext
@@ -104,26 +103,15 @@ func NewJsProducerWorkersPool(logger *zap.Logger,
 	workersCount uint32,
 	streamName string,
 	subjects []string,
-	storage nats.StorageType,
 ) *jsProducerWorkerPool {
 	l := logger.Named("producer.service").
 		With(zap.String(QueueStreamNameTag, streamName))
 
-	streamChannel := make(chan *nats.Msg, workersCount)
-
-	jsConfig := &nats.StreamConfig{
-		Name:     streamName,
-		Subjects: subjects,
-		Storage:  storage,
-	}
-
 	workersPool := &jsProducerWorkerPool{
 		logger:     l,
-		msgChannel: streamChannel,
-		jsConfig:   jsConfig,
+		msgChannel: make(chan *nats.Msg, workersCount),
 		streamName: streamName,
 		subject:    subjects,
-		storage:    storage,
 
 		natsConn:  natsProducerConn,
 		jsNatsCtx: nil, // will be filed @ init stage
