@@ -79,7 +79,7 @@ func NewSimpleConsumerSingeWorker(logger *zap.Logger,
 		stopWorkerChanel: nil, // cuz channel-less single-worker worker pool
 		logger:           logger,
 		handler:          handler,
-		reQueueDelay:     consumerCfg.GetNakDelay(),
+		reQueueDelay:     consumerCfg.GetNakDelayTimings(),
 	}
 
 	subscriptionSrv := newSimplePushSubscriptionService(logger, natsConn, consumerCfg, ww.ProcessMsg)

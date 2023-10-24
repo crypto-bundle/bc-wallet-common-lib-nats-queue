@@ -101,8 +101,9 @@ type ConsumerConfig struct {
 	AutoResubscribeCount   uint16
 	AutoResubscribeDelay   time.Duration
 
-	NakDelay       time.Duration
-	BackOffTimings []time.Duration
+	NakDelayTimings  []time.Duration
+	BackOffTimings   []time.Duration
+	MaxDeliveryCount int
 }
 
 func (c *ConsumerConfig) GetSubjectName() string {
@@ -121,12 +122,16 @@ func (c *ConsumerConfig) GetAutoResubscribeDelay() time.Duration {
 	return c.AutoResubscribeDelay
 }
 
-func (c *ConsumerConfig) GetNakDelay() time.Duration {
-	return c.NakDelay
+func (c *ConsumerConfig) GetBackOffTimings() []time.Duration {
+	return c.BackOffTimings
 }
 
-func (c *ConsumerConfig) GetBackOff() []time.Duration {
-	return c.BackOffTimings
+func (c *ConsumerConfig) GetMaxDeliveryCount() int {
+	return c.MaxDeliveryCount
+}
+
+func (c *ConsumerConfig) GetNakDelayTimings() []time.Duration {
+	return c.NakDelayTimings
 }
 
 func (c *ConsumerConfig) GetWorkersCount() uint32 {

@@ -75,12 +75,15 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 ) *jsConsumerPushQueueGroupSingeWorker {
 	l := logger.Named("consumer_worker_pool")
 
+	requeueDelays := consumerCfg.GetNakDelayTimings()
+
 	ww := &jsConsumerWorkerWrapper{
-		msgChannel:       nil, // cuz channel-less single-worker worker pool
-		stopWorkerChanel: nil, // cuz channel-less single-worker worker pool
-		logger:           logger,
-		handler:          handler,
-		reQueueDelay:     consumerCfg.GetNakDelay(),
+		msgChannel:        nil, // cuz channel-less single-worker worker pool
+		stopWorkerChanel:  nil, // cuz channel-less single-worker worker pool
+		logger:            logger,
+		handler:           handler,
+		reQueueDelay:      requeueDelays,
+		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
 	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn, consumerCfg, ww.ProcessMsg)

@@ -41,3 +41,9 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
   * Standart consumers
 * Added ReQueue delay option for Nack message case
 * Added passing SubOptions for all type of consumers
+
+## [v0.1.14] - 24.10.2023
+###
+* Added single worker producer service-component
+### Fixes
+* Nak delay timings

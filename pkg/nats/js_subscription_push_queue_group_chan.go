@@ -102,7 +102,6 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	var err error = nil
-
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
@@ -137,8 +136,11 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	l := logger.Named("subscription")
 
 	var subOptions []nats.SubOpt
-	if consumerCfg.GetBackOff() != nil {
-		subOptions = append(subOptions, nats.BackOff(consumerCfg.GetBackOff()))
+	if consumerCfg.GetBackOffTimings() != nil {
+		subOptions = append(subOptions,
+			nats.BackOff(consumerCfg.GetBackOffTimings()),
+			nats.MaxDeliver(consumerCfg.GetMaxDeliveryCount()),
+		)
 	}
 
 	return &jsPushQueueGroupChanSubscription{

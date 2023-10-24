@@ -103,13 +103,16 @@ func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 		pullSubscriber: pullSubscriber,
 	}
 
+	requeueDelays := consumerCfg.GetNakDelayTimings()
+
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
-			msgChannel:       msgChannel,
-			stopWorkerChanel: make(chan bool),
-			handler:          workersPool.handler,
-			logger:           logger,
-			reQueueDelay:     consumerCfg.GetNakDelay(),
+			msgChannel:        msgChannel,
+			stopWorkerChanel:  make(chan bool),
+			handler:           workersPool.handler,
+			logger:            logger,
+			reQueueDelay:      requeueDelays,
+			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)
