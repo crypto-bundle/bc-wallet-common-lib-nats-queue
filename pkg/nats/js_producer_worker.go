@@ -79,9 +79,7 @@ func newJsProducerWorker(logger *zap.Logger,
 	subjects []string,
 ) *jsProducerWorkerWrapper {
 	l := logger.Named("producer.service.worker").
-		With(zap.String(QueueStreamNameTag, streamName),
-			zap.Strings(QueueSubjectNameTag, subjects),
-			zap.Uint32(WorkerUnitNumberTag, workerNum))
+		With(zap.Uint32(WorkerUnitNumberTag, workerNum))
 
 	return &jsProducerWorkerWrapper{
 		logger:           l,

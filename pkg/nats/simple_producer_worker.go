@@ -59,8 +59,7 @@ func newProducerWorker(logger *zap.Logger,
 	natsProducerConn *nats.Conn,
 ) *producerWorkerWrapper {
 	l := logger.Named("producer.service.worker").
-		With(zap.String(QueueSubjectNameTag, subject),
-			zap.Uint16(WorkerUnitNumberTag, workerNum))
+		With(zap.Uint16(WorkerUnitNumberTag, workerNum))
 
 	return &producerWorkerWrapper{
 		logger:           l,

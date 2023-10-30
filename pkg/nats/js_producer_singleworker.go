@@ -104,8 +104,7 @@ func NewJsProducerSingleWorkerService(logger *zap.Logger,
 	streamName string,
 	subjects []string,
 ) *jsProducerSingleWorker {
-	l := logger.Named("producer.service").
-		With(zap.String(QueueStreamNameTag, streamName))
+	l := logger.Named("producer.service")
 
 	workersPool := &jsProducerSingleWorker{
 		logger:     l,
