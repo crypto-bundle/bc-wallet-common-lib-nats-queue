@@ -50,11 +50,10 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
 
 ## [v0.1.15] - 30.10.2023
 ### Added
-
-### Changed
-* Added single worker pull-type consumer
+* Single worker pull-type consumer
   * Consumer service-component
   * Consumer config
   * Subscription service-component
-### Fixes
-* Nak delay timings
+### Changed
+* Remake shutdown flow for producer and consumer components - removed flow with calling Shutdown() function. 
+Added usage of context.WithCancel() flow.
