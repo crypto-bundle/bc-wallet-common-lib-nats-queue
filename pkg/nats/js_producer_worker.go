@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"context"
 	"errors"
 
 	"github.com/nats-io/nats.go"
@@ -24,11 +25,17 @@ type jsProducerWorkerWrapper struct {
 
 	natsProducerConn nats.JetStreamContext
 
-	closeChanel chan bool
-	num         uint16
+	num uint16
 }
 
-func (ww *jsProducerWorkerWrapper) Run() {
+func (ww *jsProducerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.natsProducerConn = nil
+	ww.jsInfo = nil
+
+	return nil
+}
+
+func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case v := <-ww.msgChannel:
@@ -39,7 +46,7 @@ func (ww *jsProducerWorkerWrapper) Run() {
 					zap.String(QueueStreamNameTag, ww.jsInfo.Config.Name))
 			}
 
-		case <-ww.closeChanel:
+		case <-ctx.Done():
 			ww.logger.Info("producer worker. received close worker message")
 			return
 		}
@@ -64,17 +71,12 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func (ww *jsProducerWorkerWrapper) Stop() {
-	ww.closeChanel <- true
-}
-
 func newJsProducerWorker(logger *zap.Logger,
 	natsProducerConn nats.JetStreamContext,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
-	closeChan chan bool,
 ) *jsProducerWorkerWrapper {
 	l := logger.Named("producer.service.worker").
 		With(zap.String(QueueStreamNameTag, streamName),
@@ -87,7 +89,6 @@ func newJsProducerWorker(logger *zap.Logger,
 		streamName:       streamName,
 		subjects:         subjects,
 		natsProducerConn: natsProducerConn,
-		closeChanel:      closeChan,
 		num:              0,
 	}
 }

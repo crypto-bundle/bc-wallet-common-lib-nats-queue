@@ -10,8 +10,7 @@ import (
 
 // jsConsumerWorkerWrapper ...
 type jsConsumerWorkerWrapper struct {
-	msgChannel       <-chan *nats.Msg
-	stopWorkerChanel chan bool
+	msgChannel <-chan *nats.Msg
 
 	handler consumerHandler
 
@@ -20,6 +19,13 @@ type jsConsumerWorkerWrapper struct {
 	maxRedeliveryCount uint64
 	reQueueDelayCount  uint64
 	reQueueDelay       []time.Duration
+}
+
+func (ww *jsConsumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.msgChannel = nil
+	ww.handler = nil
+
+	return nil
 }
 
 func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
@@ -78,8 +84,4 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 			ww.logger.Error("unable to REJECTION-ACK message", zap.Error(err), zap.Any("message", msg))
 		}
 	}
-}
-
-func (ww *jsConsumerWorkerWrapper) Stop() {
-	ww.stopWorkerChanel <- true
 }

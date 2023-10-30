@@ -44,6 +44,14 @@ func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error
 	return nil
 }
 
+func (s *jsPushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.jsNatsCtx = nil
+	s.natsConn = nil
+
+	return nil
+}
+
 func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 	return nil
 }
@@ -75,10 +83,6 @@ func (s *jsPushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
-	return s.natsSubs.Unsubscribe()
-}
-
 func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 		s.msgChannel, s.subscribeNatsOptions...)
@@ -87,6 +91,15 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 	}
 
 	s.natsSubs = subs
+
+	return nil
+}
+
+func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

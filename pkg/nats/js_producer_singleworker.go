@@ -17,6 +17,13 @@ type jsProducerSingleWorker struct {
 	jsCtx            nats.JetStreamContext
 }
 
+func (sw *jsProducerSingleWorker) OnClosed(conn *nats.Conn) error {
+	sw.natsProducerConn = nil
+	sw.jsCtx = nil
+
+	return nil
+}
+
 func (sw *jsProducerSingleWorker) OnReconnect(newConn *nats.Conn) error {
 	sw.natsProducerConn = newConn
 
@@ -56,10 +63,6 @@ func (sw *jsProducerSingleWorker) Init(ctx context.Context) error {
 }
 
 func (sw *jsProducerSingleWorker) Run(ctx context.Context) error {
-	return nil
-}
-
-func (sw *jsProducerSingleWorker) Shutdown(ctx context.Context) error {
 	return nil
 }
 

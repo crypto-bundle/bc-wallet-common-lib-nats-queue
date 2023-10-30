@@ -7,23 +7,31 @@ import (
 	"time"
 )
 
-type simplePushQueueGroupChanSubscription struct {
+type simplePushChanSubscription struct {
 	natsSubs *nats.Subscription
 	natsConn *nats.Conn
 
 	subjectName string
-	groupName   string
 
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
 
-	msgChannel chan *nats.Msg
+	handler func(msg *nats.Msg)
 
 	logger *zap.Logger
 }
 
-func (s *simplePushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
+func (s *simplePushChanSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.natsConn = nil
+
+	s.handler = nil
+
+	return nil
+}
+
+func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	s.natsConn = newConn
 
 	err := s.tryResubscribe()
@@ -34,11 +42,11 @@ func (s *simplePushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) e
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
+func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
 		s.logger.Warn("consumer lost nats originConn")
 
@@ -54,12 +62,12 @@ func (s *simplePushQueueGroupChanSubscription) Healthcheck(ctx context.Context) 
 	return true
 }
 
-func (s *simplePushQueueGroupChanSubscription) Init(ctx context.Context) error {
+func (s *simplePushChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
+	subs, err := s.natsConn.Subscribe(s.subjectName, s.handler)
 	if err != nil {
 		return err
 	}
@@ -69,7 +77,7 @@ func (s *simplePushQueueGroupChanSubscription) Subscribe(ctx context.Context) er
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
+func (s *simplePushChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
 		return err
@@ -78,7 +86,7 @@ func (s *simplePushQueueGroupChanSubscription) Shutdown(ctx context.Context) err
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
+func (s *simplePushChanSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
@@ -86,7 +94,7 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -110,25 +118,25 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushQueueGroupSubscriptionService(logger *zap.Logger,
+func newSimplePushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-	consumerCfg consumerConfigQueueGroup,
-	msgChannel chan *nats.Msg,
-) *simplePushQueueGroupChanSubscription {
+	consumerCfg consumerConfig,
+	handler func(msg *nats.Msg),
+) *simplePushChanSubscription {
 	l := logger.Named("subscription")
 
-	return &simplePushQueueGroupChanSubscription{
+	return &simplePushChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
 		subjectName: consumerCfg.GetSubjectName(),
-		groupName:   consumerCfg.GetQueueGroupName(),
 
 		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
 		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
 		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
-		msgChannel: msgChannel,
-		logger:     l,
+		handler: handler,
+
+		logger: l,
 	}
 }

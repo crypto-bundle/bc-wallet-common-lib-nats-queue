@@ -45,6 +45,8 @@ type consumerConfigPullType interface {
 	GetFetchInterval() time.Duration
 	GetFetchTimeout() time.Duration
 	GetFetchLimit() uint
+
+	GetDurableName() string
 }
 
 type consumerHandler interface {
@@ -55,20 +57,21 @@ type subscriptionService interface {
 	Healthcheck(ctx context.Context) bool
 	OnDisconnect(conn *nats.Conn, err error) error
 	OnReconnect(conn *nats.Conn) error
+	OnClosed(conn *nats.Conn) error
 
 	Init(ctx context.Context) error
 	Subscribe(ctx context.Context) error
-	Shutdown(ctx context.Context) error
+	UnSubscribe() error
 }
 
 type consumerService interface {
 	Healthcheck(ctx context.Context) bool
 	OnDisconnect(conn *nats.Conn, err error) error
 	OnReconnect(conn *nats.Conn) error
+	OnClosed(conn *nats.Conn) error
 
 	Init(ctx context.Context) error
 	Run(ctx context.Context) error
-	Shutdown(ctx context.Context) error
 }
 
 type consumerWorker interface {
@@ -80,10 +83,10 @@ type producerService interface {
 	Healthcheck(ctx context.Context) bool
 	OnDisconnect(conn *nats.Conn, err error) error
 	OnReconnect(conn *nats.Conn) error
+	OnClosed(conn *nats.Conn) error
 
 	Init(ctx context.Context) error
 	Run(ctx context.Context) error
-	Shutdown(ctx context.Context) error
 
 	Produce(ctx context.Context, msg *nats.Msg)
 	ProduceSync(ctx context.Context, msg *nats.Msg) error

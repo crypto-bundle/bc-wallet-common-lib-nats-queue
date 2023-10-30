@@ -30,6 +30,21 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(consumerCfg consumerConfig
 	return jsConsumer
 }
 
+func (c *Connection) NewJsPullTypeConsumerSingleWorker(consumerCfg consumerConfigPullType,
+	handler consumerHandler,
+) *jsPullTypeHandlerConsumer {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	jsConsumer := NewJsPullTypeHandlerConsumer(c.logger, c.originConn,
+		consumerCfg, handler)
+
+	c.consumers = append(c.consumers, jsConsumer)
+	c.consumerCounter++
+
+	return jsConsumer
+}
+
 func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(consumerConfig consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsPushTypeChannelConsumerWorkerPool {
