@@ -43,7 +43,17 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
 * Added passing SubOptions for all type of consumers
 
 ## [v0.1.14] - 24.10.2023
-###
+### Added
 * Added single worker producer service-component
 ### Fixes
 * Nak delay timings
+
+## [v0.1.15] - 30.10.2023
+### Added
+* Single worker pull-type consumer
+  * Consumer service-component
+  * Consumer config
+  * Subscription service-component
+### Changed
+* Remake shutdown flow for producer and consumer components - removed flow with calling Shutdown() function. 
+Added usage of context.WithCancel() flow.

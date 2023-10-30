@@ -56,17 +56,6 @@ func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func (wp *simpleConsumerSingeWorker) Shutdown(ctx context.Context) error {
-	err := wp.subscriptionSrv.Shutdown(ctx)
-	if err != nil {
-		return err
-	}
-
-	wp.handler = nil
-
-	return nil
-}
-
 func NewSimpleConsumerSingeWorker(logger *zap.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
@@ -75,18 +64,17 @@ func NewSimpleConsumerSingeWorker(logger *zap.Logger,
 	l := logger.Named("consumer_worker_pool")
 
 	ww := &jsConsumerWorkerWrapper{
-		msgChannel:       nil, // cuz channel-less single-worker worker pool
-		stopWorkerChanel: nil, // cuz channel-less single-worker worker pool
-		logger:           logger,
-		handler:          handler,
-		reQueueDelay:     consumerCfg.GetNakDelayTimings(),
+		msgChannel:   nil, // cuz channel-less single-worker worker pool
+		logger:       logger,
+		handler:      handler,
+		reQueueDelay: consumerCfg.GetNakDelayTimings(),
 	}
 
 	subscriptionSrv := newSimplePushSubscriptionService(logger, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
 		logger:          l,
-		subscriptionSrv: subscriptionSrv,
+		subscriptionSvc: subscriptionSrv,
 		worker:          ww,
 	}
 

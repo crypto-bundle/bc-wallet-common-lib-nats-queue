@@ -17,6 +17,13 @@ type jsProducerSingleWorker struct {
 	jsCtx            nats.JetStreamContext
 }
 
+func (sw *jsProducerSingleWorker) OnClosed(conn *nats.Conn) error {
+	sw.natsProducerConn = nil
+	sw.jsCtx = nil
+
+	return nil
+}
+
 func (sw *jsProducerSingleWorker) OnReconnect(newConn *nats.Conn) error {
 	sw.natsProducerConn = newConn
 
@@ -59,10 +66,6 @@ func (sw *jsProducerSingleWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func (sw *jsProducerSingleWorker) Shutdown(ctx context.Context) error {
-	return nil
-}
-
 func (sw *jsProducerSingleWorker) Produce(ctx context.Context, msg *nats.Msg) {
 	err := sw.produce(ctx, msg)
 	if err != nil {
@@ -101,8 +104,7 @@ func NewJsProducerSingleWorkerService(logger *zap.Logger,
 	streamName string,
 	subjects []string,
 ) *jsProducerSingleWorker {
-	l := logger.Named("producer.service").
-		With(zap.String(QueueStreamNameTag, streamName))
+	l := logger.Named("producer.service")
 
 	workersPool := &jsProducerSingleWorker{
 		logger:     l,

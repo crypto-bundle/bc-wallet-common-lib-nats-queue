@@ -12,15 +12,40 @@ type jsPushTypeChannelConsumerWorkerPool struct {
 	handler consumerHandler
 	workers []*jsConsumerWorkerWrapper
 
-	subscriptionSrv subscriptionService
+	subscriptionSvc subscriptionService
 
 	msgChannel chan *nats.Msg
 
 	logger *zap.Logger
 }
 
+func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
+	var err error
+
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in consumer worker pool unit", zap.Error(loopErr))
+
+			err = loopErr
+		}
+		wp.workers[i] = nil
+	}
+
+	err = wp.subscriptionSvc.OnClosed(conn)
+	if err != nil {
+		wp.logger.Error("unable to call onClosed in subscription service", zap.Error(err))
+	}
+
+	close(wp.msgChannel)
+	wp.handler = nil
+	wp.subscriptionSvc = nil
+
+	return err
+}
+
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
-	err := wp.subscriptionSrv.OnReconnect(conn)
+	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
 		return err
 	}
@@ -29,7 +54,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) erro
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
-	retErr := wp.subscriptionSrv.OnDisconnect(conn, err)
+	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
 		return retErr
 	}
@@ -38,11 +63,11 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) Healthcheck(ctx context.Context) bool {
-	return wp.subscriptionSrv.Healthcheck(ctx)
+	return wp.subscriptionSvc.Healthcheck(ctx)
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) Init(ctx context.Context) error {
-	return wp.subscriptionSrv.Init(ctx)
+	return wp.subscriptionSvc.Init(ctx)
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
@@ -50,23 +75,23 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 		go w.Run(ctx)
 	}
 
-	return wp.subscriptionSrv.Subscribe(ctx)
-}
-
-func (wp *jsPushTypeChannelConsumerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
-	}
-
-	err := wp.subscriptionSrv.Shutdown(ctx)
+	err := wp.subscriptionSvc.Subscribe(ctx)
 	if err != nil {
-		wp.logger.Warn("unable to shutdown subscription")
+		return err
 	}
 
-	wp.handler = nil
+	go func() {
+		<-ctx.Done()
 
-	close(wp.msgChannel)
-	wp.msgChannel = nil
+		err = wp.subscriptionSvc.UnSubscribe()
+		if err != nil {
+			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+		}
+
+		wp.logger.Info("successfully unsubscribed")
+
+		return
+	}()
 
 	return nil
 }
@@ -86,7 +111,8 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler:         handler,
 		logger:          l,
-		subscriptionSrv: subscriptionSrv,
+		subscriptionSvc: subscriptionSrv,
+		msgChannel:      msgChannel,
 	}
 
 	requeueDelays := consumerCfg.GetNakDelayTimings()
@@ -94,7 +120,6 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:        msgChannel,
-			stopWorkerChanel:  make(chan bool),
 			handler:           workersPool.handler,
 			logger:            l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 			reQueueDelay:      requeueDelays,

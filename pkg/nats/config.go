@@ -146,3 +146,29 @@ type ConsumerConfigGrouped struct {
 func (c *ConsumerConfigGrouped) GetQueueGroupName() string {
 	return c.QueueGroupName
 }
+
+type ConsumerConfigPullType struct {
+	ConsumerConfig
+
+	DurableName string
+
+	FetchInterval time.Duration
+	FetchTimeout  time.Duration
+	FetchLimit    uint
+}
+
+func (c *ConsumerConfigPullType) GetDurableName() string {
+	return c.DurableName
+}
+
+func (c *ConsumerConfigPullType) GetFetchInterval() time.Duration {
+	return c.FetchInterval
+}
+
+func (c *ConsumerConfigPullType) GetFetchTimeout() time.Duration {
+	return c.FetchTimeout
+}
+
+func (c *ConsumerConfigPullType) GetFetchLimit() uint {
+	return c.FetchLimit
+}

@@ -44,6 +44,15 @@ func (s *jsPushQueueGroupHandlerSubscription) OnReconnect(newConn *nats.Conn) er
 	return nil
 }
 
+func (s *jsPushQueueGroupHandlerSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.jsNatsCtx = nil
+	s.natsConn = nil
+	s.handler = nil
+
+	return nil
+}
+
 func (s *jsPushQueueGroupHandlerSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 	return nil
 }
@@ -75,17 +84,6 @@ func (s *jsPushQueueGroupHandlerSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPushQueueGroupHandlerSubscription) Shutdown(ctx context.Context) error {
-	err := s.natsSubs.Unsubscribe()
-	if err != nil {
-		return err
-	}
-
-	s.handler = nil
-
-	return nil
-}
-
 func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
 		s.handler, s.subscribeNatsOptions...)
@@ -94,6 +92,15 @@ func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) err
 	}
 
 	s.natsSubs = subs
+
+	return nil
+}
+
+func (s *jsPushQueueGroupHandlerSubscription) UnSubscribe() error {
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

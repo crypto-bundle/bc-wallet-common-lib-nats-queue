@@ -18,6 +18,26 @@ type simpleConsumerWorkerPool struct {
 	logger *zap.Logger
 }
 
+func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
+	var err error
+
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in simple producer pool unit", zap.Error(loopErr))
+
+			err = loopErr
+		}
+
+		wp.workers[i] = nil
+	}
+
+	close(wp.msgChannel)
+	wp.msgChannel = nil
+
+	return err
+}
+
 func (wp *simpleConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	retErr := wp.subscriptionSrv.OnReconnect(conn)
 	if retErr != nil {
@@ -45,24 +65,23 @@ func (wp *simpleConsumerWorkerPool) Init(ctx context.Context) error {
 }
 
 func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
-	wp.run()
-
-	return wp.subscriptionSrv.Subscribe(ctx)
-}
-
-func (wp *simpleConsumerWorkerPool) run() {
 	for _, w := range wp.workers {
-		go w.Run()
-	}
-}
-
-func (wp *simpleConsumerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
+		go w.Run(ctx)
 	}
 
-	close(wp.msgChannel)
-	wp.msgChannel = nil
+	err := wp.subscriptionSrv.Subscribe(ctx)
+	if err != nil {
+		wp.logger.Error("unable to subscribe", zap.Error(err))
+	}
+
+	go func() {
+		<-ctx.Done()
+
+		err = wp.subscriptionSrv.UnSubscribe()
+		if err != nil {
+			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+		}
+	}()
 
 	return nil
 }
@@ -90,10 +109,9 @@ func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &consumerWorkerWrapper{
-			msgChannel:       msgChannel,
-			stopWorkerChanel: make(chan bool),
-			handler:          workersPool.handler,
-			logger:           l.With(zap.Uint32(WorkerUnitNumberTag, i)),
+			msgChannel: msgChannel,
+			handler:    workersPool.handler,
+			logger:     l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

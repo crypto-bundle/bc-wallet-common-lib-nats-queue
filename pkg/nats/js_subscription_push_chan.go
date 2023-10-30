@@ -26,6 +26,14 @@ type jsPushSubscription struct {
 	logger *zap.Logger
 }
 
+func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.jsNatsCtx = nil
+	s.natsConn = nil
+
+	return nil
+}
+
 func (s *jsPushSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
@@ -83,13 +91,10 @@ func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
 
 	s.natsSubs = subs
 
-	//s.natsConn.SetErrorHandler(s.onDisconnect)
-	//s.natsConn.SetReconnectHandler(s.tryResubscribe)
-
 	return nil
 }
 
-func (s *jsPushSubscription) Shutdown(ctx context.Context) error {
+func (s *jsPushSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
 		return err

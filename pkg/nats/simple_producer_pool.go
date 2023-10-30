@@ -24,6 +24,27 @@ type simpleProducerWorkerPool struct {
 	rr           uint32 // round-robin index
 }
 
+func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
+	var err error
+
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in simple producer pool unit", zap.Error(loopErr))
+
+			err = loopErr
+		}
+		wp.workers[i] = nil
+	}
+
+	wp.natsProducerConn = nil
+
+	close(wp.msgChannel)
+	wp.msgChannel = nil
+
+	return err
+}
+
 func (wp *simpleProducerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	return nil
 }
@@ -38,23 +59,15 @@ func (wp *simpleProducerWorkerPool) Init(ctx context.Context) error {
 }
 
 func (wp *simpleProducerWorkerPool) Run(ctx context.Context) error {
-	wp.run()
+	wp.run(ctx)
 
 	return nil
 }
 
-func (wp *simpleProducerWorkerPool) run() {
+func (wp *simpleProducerWorkerPool) run(ctx context.Context) {
 	for i, _ := range wp.workers {
-		go wp.workers[i].Run()
+		go wp.workers[i].Run(ctx)
 	}
-}
-
-func (wp *simpleProducerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
-	}
-
-	return nil
 }
 
 func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
@@ -102,7 +115,7 @@ func NewSimpleProducerWorkersPool(logger *zap.Logger,
 
 	for i := uint16(0); i < workersCount; i++ {
 		ww := newProducerWorker(logger, i, msgChannel, subjectName,
-			natsProducerConn, make(chan bool))
+			natsProducerConn)
 
 		workersPool.workers[i] = ww
 	}

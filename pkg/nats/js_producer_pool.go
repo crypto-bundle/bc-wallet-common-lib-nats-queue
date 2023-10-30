@@ -14,10 +14,7 @@ type jsProducerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 	streamName string
-	subject    []string
-
-	storage nats.StorageType
-	jsInfo  *nats.StreamInfo
+	subjects   []string
 
 	natsConn  *nats.Conn
 	jsNatsCtx nats.JetStreamContext
@@ -25,6 +22,24 @@ type jsProducerWorkerPool struct {
 	workers      []*jsProducerWorkerWrapper
 	workersCount uint32
 	rr           uint32 // round-robin index
+}
+
+func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in producer pool unit", zap.Error(loopErr))
+
+			return loopErr
+		}
+		wp.workers[i] = nil
+	}
+
+	wp.natsConn = nil
+	wp.jsNatsCtx = nil
+	close(wp.msgChannel)
+
+	return nil
 }
 
 func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
@@ -65,7 +80,7 @@ func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
 	for i := uint32(0); i < wp.workersCount; i++ {
 		ww := newJsProducerWorker(wp.logger, wp.jsNatsCtx, i,
 			wp.msgChannel, wp.streamName,
-			wp.subject, make(chan bool))
+			wp.subjects)
 
 		wp.workers = append(wp.workers, ww)
 	}
@@ -75,15 +90,7 @@ func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
 
 func (wp *jsProducerWorkerPool) Run(ctx context.Context) error {
 	for i, _ := range wp.workers {
-		go wp.workers[i].Run()
-	}
-
-	return nil
-}
-
-func (wp *jsProducerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
+		go wp.workers[i].Run(ctx)
 	}
 
 	return nil
@@ -104,14 +111,13 @@ func NewJsProducerWorkersPool(logger *zap.Logger,
 	streamName string,
 	subjects []string,
 ) *jsProducerWorkerPool {
-	l := logger.Named("producer.service").
-		With(zap.String(QueueStreamNameTag, streamName))
+	l := logger.Named("producer.service")
 
 	workersPool := &jsProducerWorkerPool{
 		logger:     l,
 		msgChannel: make(chan *nats.Msg, workersCount),
 		streamName: streamName,
-		subject:    subjects,
+		subjects:   subjects,
 
 		natsConn:  natsProducerConn,
 		jsNatsCtx: nil, // will be filed @ init stage
