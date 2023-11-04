@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	DefaultAckWaitTiming = time.Second * 8
+)
+
 type NatsConfig struct {
 	NatsAddresses string `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
 	NatsUser      string `envconfig:"NATS_USER" required:"true" secret:"true"`
@@ -104,6 +108,7 @@ type ConsumerConfig struct {
 	NakDelayTimings  []time.Duration
 	BackOffTimings   []time.Duration
 	MaxDeliveryCount int
+	AckWaitTiming    time.Duration
 }
 
 func (c *ConsumerConfig) GetSubjectName() string {
@@ -132,6 +137,14 @@ func (c *ConsumerConfig) GetMaxDeliveryCount() int {
 
 func (c *ConsumerConfig) GetNakDelayTimings() []time.Duration {
 	return c.NakDelayTimings
+}
+
+func (c *ConsumerConfig) GetAckWaitTiming() time.Duration {
+	if c.AckWaitTiming == 0 {
+		return DefaultAckWaitTiming
+	}
+
+	return c.AckWaitTiming
 }
 
 func (c *ConsumerConfig) GetWorkersCount() uint32 {

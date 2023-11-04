@@ -57,3 +57,8 @@ E456BB23A18A9347E952DBC6655133DD561BF3EC
 ### Changed
 * Remake shutdown flow for producer and consumer components - removed flow with calling Shutdown() function. 
 Added usage of context.WithCancel() flow.
+
+## [v0.1.16] - 4.11.2023
+### Added
+* AckWait option for consumers
+* Added Pull-type channel-based worker pool and subscription

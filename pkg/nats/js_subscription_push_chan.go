@@ -13,8 +13,7 @@ type jsPushSubscription struct {
 	natsConn  *nats.Conn
 	jsNatsCtx nats.JetStreamContext
 
-	subjectName    string
-	queueGroupName string
+	subjectName string
 
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
@@ -136,29 +135,32 @@ func (s *jsPushSubscription) tryResubscribe() error {
 func newJsPushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
 
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfig,
 	msgChannel chan *nats.Msg,
-	subOpt ...nats.SubOpt,
 ) *jsPushSubscription {
 	l := logger.Named("subscription")
+
+	subOptions := []nats.SubOpt{
+		nats.AckWait(consumerCfg.GetAckWaitTiming()),
+	}
+
+	if consumerCfg.GetBackOffTimings() != nil {
+		subOptions = append(subOptions,
+			nats.BackOff(consumerCfg.GetBackOffTimings()),
+			nats.MaxDeliver(consumerCfg.GetMaxDeliveryCount()),
+		)
+	}
 
 	return &jsPushSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName:    subjectName,
-		queueGroupName: queueGroupName,
+		subjectName: consumerCfg.GetSubjectName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
-		subscribeNatsOptions:   subOpt,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
 		logger:     l,
