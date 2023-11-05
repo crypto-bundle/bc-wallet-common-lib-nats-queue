@@ -148,7 +148,10 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 ) *jsPushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
 
-	var subOptions []nats.SubOpt
+	subOptions := []nats.SubOpt{
+		nats.AckWait(consumerCfg.GetAckWaitTiming()),
+	}
+
 	if consumerCfg.GetBackOffTimings() != nil {
 		subOptions = append(subOptions,
 			nats.BackOff(consumerCfg.GetBackOffTimings()),

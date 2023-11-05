@@ -190,7 +190,10 @@ func newJsPullChanSubscriptionService(logger *zap.Logger,
 ) *jsPullChanSubscription {
 	l := logger.Named("subscription")
 
-	var subOptions []nats.SubOpt
+	subOptions := []nats.SubOpt{
+		nats.AckWait(consumerCfg.GetAckWaitTiming()),
+	}
+
 	if consumerCfg.GetBackOffTimings() != nil {
 		subOptions = append(subOptions,
 			nats.BackOff(consumerCfg.GetBackOffTimings()),

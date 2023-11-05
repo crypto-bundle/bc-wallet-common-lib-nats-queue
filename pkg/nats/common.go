@@ -31,6 +31,7 @@ type consumerConfig interface {
 	GetNakDelayTimings() []time.Duration
 	GetBackOffTimings() []time.Duration
 	GetMaxDeliveryCount() int
+	GetAckWaitTiming() time.Duration
 }
 
 type consumerConfigQueueGroup interface {

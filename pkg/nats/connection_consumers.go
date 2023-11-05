@@ -45,6 +45,21 @@ func (c *Connection) NewJsPullTypeConsumerSingleWorker(consumerCfg consumerConfi
 	return jsConsumer
 }
 
+func (c *Connection) NewJsPushTypeChannelConsumerGroupWorkersPool(consumerConfig consumerConfigQueueGroup,
+	handler consumerHandler,
+) *jsPushTypeQueueGroupChannelConsumerWorkerPool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	jsConsumer := NewJsPushTypeChannelGroupConsumerWorkersPool(c.logger, c.originConn,
+		consumerConfig, handler)
+
+	c.consumers = append(c.consumers, jsConsumer)
+	c.consumerCounter++
+
+	return jsConsumer
+}
+
 func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(consumerConfig consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsPushTypeChannelConsumerWorkerPool {

@@ -7,8 +7,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// jsPushTypeQueueGroupChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
-type jsPushTypeQueueGroupChannelConsumerWorkerPool struct {
+// jsPushTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
+type jsPushTypeChannelConsumerWorkerPool struct {
 	handler consumerHandler
 	workers []*jsConsumerWorkerWrapper
 
@@ -19,7 +19,7 @@ type jsPushTypeQueueGroupChannelConsumerWorkerPool struct {
 	logger *zap.Logger
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
+func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
 	for i, _ := range wp.workers {
@@ -44,7 +44,7 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnClosed(conn *nats.Con
 	return err
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
+func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnReconnect(conn *nats.
 	return nil
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+func (wp *jsPushTypeChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
 		return retErr
@@ -62,15 +62,15 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnDisconnect(conn *nats
 	return nil
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) Healthcheck(ctx context.Context) bool {
+func (wp *jsPushTypeChannelConsumerWorkerPool) Healthcheck(ctx context.Context) bool {
 	return wp.subscriptionSvc.Healthcheck(ctx)
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) Init(ctx context.Context) error {
+func (wp *jsPushTypeChannelConsumerWorkerPool) Init(ctx context.Context) error {
 	return wp.subscriptionSvc.Init(ctx)
 }
 
-func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) Run(ctx context.Context) error {
+func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 	for _, w := range wp.workers {
 		go w.Run(ctx)
 	}
@@ -96,19 +96,19 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) Run(ctx context.Context
 	return nil
 }
 
-func NewJsPushTypeChannelGroupConsumerWorkersPool(logger *zap.Logger,
+func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 	natsConn *nats.Conn,
-	consumerCfg consumerConfigQueueGroup,
+	consumerCfg consumerConfig,
 	handler consumerHandler,
-) *jsPushTypeQueueGroupChannelConsumerWorkerPool {
+) *jsPushTypeChannelConsumerWorkerPool {
 	l := logger.Named("queue_consumer_pool.service")
 
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(l, natsConn, consumerCfg,
+	subscriptionSrv := newJsPushSubscriptionService(l, natsConn, consumerCfg,
 		msgChannel)
 
-	workersPool := &jsPushTypeQueueGroupChannelConsumerWorkerPool{
+	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler:         handler,
 		logger:          l,
 		subscriptionSvc: subscriptionSrv,
