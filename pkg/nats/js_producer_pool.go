@@ -2,7 +2,6 @@ package nats
 
 import (
 	"context"
-	"errors"
 	"go.uber.org/zap"
 	"sync/atomic"
 
@@ -14,65 +13,84 @@ type jsProducerWorkerPool struct {
 	logger *zap.Logger
 
 	msgChannel chan *nats.Msg
-	handler    ProducerWorkerTask
 	streamName string
-	subject    []string
+	subjects   []string
 
-	storage          nats.StorageType
-	jsInfo           *nats.StreamInfo
-	jsConfig         *nats.StreamConfig
-	natsProducerConn nats.JetStreamContext
+	natsConn  *nats.Conn
+	jsNatsCtx nats.JetStreamContext
 
 	workers      []*jsProducerWorkerWrapper
 	workersCount uint32
 	rr           uint32 // round-robin index
 }
 
-func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
-	streamInfo, err := wp.getStreamInfo(ctx)
+func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in producer pool unit", zap.Error(loopErr))
+
+			return loopErr
+		}
+		wp.workers[i] = nil
+	}
+
+	wp.natsConn = nil
+	wp.jsNatsCtx = nil
+	close(wp.msgChannel)
+
+	return nil
+}
+
+func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
+	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
 		return err
 	}
 
-	if streamInfo == nil {
-		return ErrReturnedNilStreamInfo
-	}
+	wp.jsNatsCtx = jsNatsCtx
 
-	for i, _ := range wp.workers {
-		wp.workers[i].SetStreamInfo(streamInfo)
-	}
+	wp.natsConn = newConn
 
 	return nil
 }
 
-func (wp *jsProducerWorkerPool) getStreamInfo(ctx context.Context) (*nats.StreamInfo, error) {
-	streamInfo, err := wp.natsProducerConn.StreamInfo(wp.jsConfig.Name)
-	if err != nil {
-		if errors.Is(err, nats.ErrStreamNotFound) {
-			wp.logger.Error("stream not found", zap.Error(err))
-		}
+func (wp *jsProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
+}
 
-		return nil, err
+func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+	if !wp.natsConn.IsConnected() {
+		wp.logger.Warn("producer lost nats originConn")
+
+		return false
 	}
 
-	return streamInfo, nil
+	return true
+}
+
+func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
+	jsNatsCtx, err := wp.natsConn.JetStream()
+	if err != nil {
+		return err
+	}
+
+	wp.jsNatsCtx = jsNatsCtx
+
+	for i := uint32(0); i < wp.workersCount; i++ {
+		ww := newJsProducerWorker(wp.logger, wp.jsNatsCtx, i,
+			wp.msgChannel, wp.streamName,
+			wp.subjects)
+
+		wp.workers = append(wp.workers, ww)
+	}
+
+	return nil
 }
 
 func (wp *jsProducerWorkerPool) Run(ctx context.Context) error {
-	wp.run()
-
-	return nil
-}
-
-func (wp *jsProducerWorkerPool) run() {
 	for i, _ := range wp.workers {
-		go wp.workers[i].Run()
-	}
-}
-
-func (wp *jsProducerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
+		go wp.workers[i].Run(ctx)
 	}
 
 	return nil
@@ -87,44 +105,26 @@ func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) 
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewJsProducerWorkersPool(
-	logger *zap.Logger,
-	workersCount uint16,
+func NewJsProducerWorkersPool(logger *zap.Logger,
+	natsProducerConn *nats.Conn,
+	workersCount uint32,
 	streamName string,
 	subjects []string,
-	storage nats.StorageType,
-	natsProducerConn nats.JetStreamContext,
-) (*jsProducerWorkerPool, error) {
-	l := logger.Named("producer.service").
-		With(zap.String(QueueStreamNameTag, streamName))
-
-	streamChannel := make(chan *nats.Msg, workersCount)
-
-	jsConfig := &nats.StreamConfig{
-		Name:     streamName,
-		Subjects: subjects,
-		Storage:  storage,
-	}
+) *jsProducerWorkerPool {
+	l := logger.Named("producer.service")
 
 	workersPool := &jsProducerWorkerPool{
-		logger:           l,
-		msgChannel:       streamChannel,
-		jsConfig:         jsConfig,
-		streamName:       streamName,
-		subject:          subjects,
-		storage:          storage,
-		natsProducerConn: natsProducerConn,
+		logger:     l,
+		msgChannel: make(chan *nats.Msg, workersCount),
+		streamName: streamName,
+		subjects:   subjects,
 
-		workersCount: uint32(workersCount),
+		natsConn:  natsProducerConn,
+		jsNatsCtx: nil, // will be filed @ init stage
+
+		workersCount: workersCount,
 		rr:           1, // round-robin index
 	}
 
-	for i := uint16(0); i < workersCount; i++ {
-		ww := newJsProducerWorker(logger, i, streamChannel, streamName, subjects,
-			natsProducerConn, make(chan bool))
-
-		workersPool.workers = append(workersPool.workers, ww)
-	}
-
-	return workersPool, nil
+	return workersPool
 }

@@ -32,3 +32,13 @@ func (d ConsumerDirective) String() string {
 		DirectiveForReQueueName,
 	}[d]
 }
+
+type ConsumerType uint
+
+const (
+	ConsumerTypeJSPushGroupSingleWorker ConsumerType = iota + 1
+	ConsumerTypeJSPushGroupChanelWorkerPool
+	ConsumerTypeJSPullChanelWorkerPool
+	ConsumerTypeSimpleGroupChannelWorkerPool
+	ConsumerTypeSimpleGroupChannelSingleWorker
+)

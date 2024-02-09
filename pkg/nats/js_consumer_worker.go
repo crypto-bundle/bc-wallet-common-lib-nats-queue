@@ -2,6 +2,7 @@ package nats
 
 import (
 	"context"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -9,14 +10,22 @@ import (
 
 // jsConsumerWorkerWrapper ...
 type jsConsumerWorkerWrapper struct {
-	msgChannel       <-chan *nats.Msg
-	stopWorkerChanel chan bool
+	msgChannel <-chan *nats.Msg
 
 	handler consumerHandler
 
 	logger *zap.Logger
 
 	maxRedeliveryCount uint64
+	reQueueDelayCount  uint64
+	reQueueDelay       []time.Duration
+}
+
+func (ww *jsConsumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.msgChannel = nil
+	ww.handler = nil
+
+	return nil
 }
 
 func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
@@ -50,14 +59,6 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 
 	decisionDirective, err := ww.handler.Process(context.Background(), msg)
 	switch {
-	case err != nil && msgMetaData.NumDelivered <= ww.maxRedeliveryCount:
-		nakErr := msg.Nak()
-		if nakErr != nil {
-			ww.logger.Error("unable to NACK message", zap.Error(nakErr),
-				zap.String(SubjectTag, msg.Subject),
-				zap.Uint64(DeliveredCount, msgMetaData.NumDelivered))
-		}
-
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
@@ -65,7 +66,14 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 		}
 
 	case decisionDirective == DirectiveForReQueue:
-		nakErr := msg.Nak()
+		var delay time.Duration
+		if msgMetaData.NumDelivered > ww.reQueueDelayCount {
+			delay = ww.reQueueDelay[ww.reQueueDelayCount]
+		} else {
+			delay = ww.reQueueDelay[msgMetaData.NumDelivered-1]
+		}
+
+		nakErr := msg.NakWithDelay(delay)
 		if nakErr != nil {
 			ww.logger.Error("unable to RE-QUEUE message", zap.Error(nakErr), zap.Any("message", msg))
 		}
@@ -76,8 +84,4 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 			ww.logger.Error("unable to REJECTION-ACK message", zap.Error(err), zap.Any("message", msg))
 		}
 	}
-}
-
-func (ww *jsConsumerWorkerWrapper) Stop() {
-	ww.stopWorkerChanel <- true
 }

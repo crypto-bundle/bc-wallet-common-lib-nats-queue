@@ -9,8 +9,7 @@ import (
 
 // consumerWorkerWrapper ...
 type consumerWorkerWrapper struct {
-	msgChannel       <-chan *nats.Msg
-	stopWorkerChanel chan bool
+	msgChannel <-chan *nats.Msg
 
 	handler consumerHandler
 
@@ -19,10 +18,17 @@ type consumerWorkerWrapper struct {
 	maxRedeliveryCount uint64
 }
 
-func (ww *consumerWorkerWrapper) Start() {
+func (ww *consumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.msgChannel = nil
+	ww.handler = nil
+
+	return nil
+}
+
+func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
-		case <-ww.stopWorkerChanel:
+		case <-ctx.Done():
 			ww.logger.Info("consumer worker. received close worker message")
 			return
 
@@ -58,8 +64,4 @@ func (ww *consumerWorkerWrapper) processMsg(msg *nats.Msg) {
 			ww.logger.Error("unable to REJECTION-ACK message", zap.Error(err), zap.Any("message", msg))
 		}
 	}
-}
-
-func (ww *consumerWorkerWrapper) Stop() {
-	ww.stopWorkerChanel <- true
 }

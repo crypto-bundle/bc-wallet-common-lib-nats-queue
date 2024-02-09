@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"context"
 	"errors"
 
 	"github.com/nats-io/nats.go"
@@ -15,17 +16,26 @@ var (
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	logger           *zap.Logger
-	msgChannel       <-chan *nats.Msg
-	jsInfo           *nats.StreamInfo
-	streamName       string
-	subjects         []string
+	logger     *zap.Logger
+	msgChannel <-chan *nats.Msg
+	jsInfo     *nats.StreamInfo
+
+	streamName string
+	subjects   []string
+
 	natsProducerConn nats.JetStreamContext
-	closeChanel      chan bool
-	num              uint16
+
+	num uint16
 }
 
-func (ww *jsProducerWorkerWrapper) Run() {
+func (ww *jsProducerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.natsProducerConn = nil
+	ww.jsInfo = nil
+
+	return nil
+}
+
+func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case v := <-ww.msgChannel:
@@ -36,7 +46,7 @@ func (ww *jsProducerWorkerWrapper) Run() {
 					zap.String(QueueStreamNameTag, ww.jsInfo.Config.Name))
 			}
 
-		case <-ww.closeChanel:
+		case <-ctx.Done():
 			ww.logger.Info("producer worker. received close worker message")
 			return
 		}
@@ -58,32 +68,18 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 		return ErrNilPubAck
 	}
 
-	ww.logger.Info("received pubAck", zap.String(QueuePubAckStreamNameTag, pubAck.Stream),
-		zap.Uint64(QueuePubAckSequenceTag, pubAck.Sequence))
-
 	return nil
 }
 
-func (ww *jsProducerWorkerWrapper) SetStreamInfo(streamInfo *nats.StreamInfo) {
-	ww.jsInfo = streamInfo
-}
-
-func (ww *jsProducerWorkerWrapper) Stop() {
-	ww.closeChanel <- true
-}
-
 func newJsProducerWorker(logger *zap.Logger,
-	workerNum uint16,
+	natsProducerConn nats.JetStreamContext,
+	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
-	natsProducerConn nats.JetStreamContext,
-	closeChan chan bool,
 ) *jsProducerWorkerWrapper {
 	l := logger.Named("producer.service.worker").
-		With(zap.String(QueueStreamNameTag, streamName),
-			zap.Strings(QueueSubjectNameTag, subjects),
-			zap.Uint16(WorkerUnitNumberTag, workerNum))
+		With(zap.Uint32(WorkerUnitNumberTag, workerNum))
 
 	return &jsProducerWorkerWrapper{
 		logger:           l,
@@ -91,7 +87,6 @@ func newJsProducerWorker(logger *zap.Logger,
 		streamName:       streamName,
 		subjects:         subjects,
 		natsProducerConn: natsProducerConn,
-		closeChanel:      closeChan,
 		num:              0,
 	}
 }

@@ -1,9 +1,8 @@
-module github.com/crypto-bundle/bc-wallet-common-lib-nats-queue-lib-nats-queue
+module github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
 
-go 1.17
+go 1.19
 
 require (
-	github.com/caarlos0/env/v6 v6.9.1
 	github.com/golang/protobuf v1.5.2
 	github.com/nats-io/nats.go v1.15.0
 	go.uber.org/zap v1.21.0
@@ -18,6 +17,7 @@ require (
 )
 
 require (
+	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
