@@ -1,20 +1,31 @@
 package nats
 
-import (
-	"github.com/nats-io/nats.go"
-)
+func (c *Connection) NewJsProducerSingleWorker(
+	streamName string,
+	subjects []string,
+) *jsProducerSingleWorker {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	producer := NewJsProducerSingleWorkerService(c.logger, c.originConn,
+		streamName, subjects)
+
+	c.producers = append(c.producers, producer)
+	c.producersCounter++
+
+	return producer
+}
 
 func (c *Connection) NewJsProducerWorkersPool(
 	workersCount uint32,
 	streamName string,
 	subjects []string,
-	storageType nats.StorageType,
 ) *jsProducerWorkerPool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	producer := NewJsProducerWorkersPool(c.logger, c.originConn, workersCount,
-		streamName, subjects, storageType)
+		streamName, subjects)
 
 	c.producers = append(c.producers, producer)
 	c.producersCounter++

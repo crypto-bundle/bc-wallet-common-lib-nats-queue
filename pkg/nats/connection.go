@@ -40,6 +40,7 @@ func (c *Connection) Connect() error {
 	}
 
 	inst.SetDisconnectErrHandler(c.onDisconnect)
+	inst.SetClosedHandler(c.onClosed)
 	inst.SetReconnectHandler(c.onReconnect)
 
 	c.originConn = inst
@@ -54,6 +55,9 @@ func (c *Connection) GetConnection() *nats.Conn {
 
 func (c *Connection) Close() error {
 	c.originConn.Close()
+
+	c.logger.Info("nats connection successfully closed")
+
 	return nil
 }
 
@@ -76,6 +80,29 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
 			c.logger.Warn("unable to call onDisconnect on consumer",
+				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
+		}
+	}
+}
+
+func (c *Connection) onClosed(newConn *nats.Conn) {
+	c.logger.Warn("received onClosed event - calling OnClosed on all consumers/producers")
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i := uint64(0); i != c.producersCounter; i++ {
+		producerErr := c.producers[i].OnClosed(newConn)
+		if producerErr != nil {
+			c.logger.Warn("unable to call onClosed on producer",
+				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
+		}
+	}
+
+	for i := uint64(0); i != c.consumerCounter; i++ {
+		consumerErr := c.consumers[i].OnClosed(newConn)
+		if consumerErr != nil {
+			c.logger.Warn("unable to call onClosed on consumer",
 				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
 		}
 	}
@@ -130,7 +157,7 @@ func NewConnection(ctx context.Context,
 
 		retryCount:   cfg.GetNatsConnectionRetryCount(),
 		retryTimeOut: cfg.GetNatsConnectionRetryTimeout(),
-		
+
 		consumerCounter:  0,
 		producersCounter: 0,
 	}

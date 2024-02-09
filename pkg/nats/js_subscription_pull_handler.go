@@ -3,37 +3,37 @@ package nats
 import (
 	"context"
 	"errors"
-	"time"
-
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
+	"time"
 )
 
-type jsPullChanSubscription struct {
-	msgChannel chan *nats.Msg
-	natsSubs   *nats.Subscription
-	natsConn   *nats.Conn
-	jsNatsCtx  nats.JetStreamContext
-
+type jsPullHandlerSubscription struct {
+	natsSubs    *nats.Subscription
+	natsConn    *nats.Conn
+	jsNatsCtx   nats.JetStreamContext
 	subjectName string
-	streamName  string
-	durableName string
 
-	autoReSubscribe      bool
-	autoReSubscribeCount uint16
-	autoReSubscribeDelay time.Duration
-	subscribeNatsOptions []nats.SubOpt
+	streamName      string
+	durableName     string
+	autoReSubscribe bool
 
-	fetchInterval time.Duration
-	fetchTimeout  time.Duration
-	fetchLimit    uint
+	autoReSubscribeCount   uint16
+	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
+	fetchInterval          time.Duration
+
+	fetchTimeout time.Duration
+	fetchLimit   uint
 
 	ticker *time.Ticker
 
 	logger *zap.Logger
+
+	handler func(msg *nats.Msg)
 }
 
-func (s *jsPullChanSubscription) OnClosed(conn *nats.Conn) error {
+func (s *jsPullHandlerSubscription) OnClosed(conn *nats.Conn) error {
 	s.natsConn = nil
 	s.natsSubs = nil
 	s.jsNatsCtx = nil
@@ -42,7 +42,7 @@ func (s *jsPullChanSubscription) OnClosed(conn *nats.Conn) error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) OnReconnect(newConn *nats.Conn) error {
+func (s *jsPullHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
 		return err
@@ -60,11 +60,11 @@ func (s *jsPullChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+func (s *jsPullHandlerSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) Healthcheck(ctx context.Context) bool {
+func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
 		s.logger.Warn("consumer lost nats originConn")
 
@@ -80,7 +80,7 @@ func (s *jsPullChanSubscription) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (s *jsPullChanSubscription) Init(ctx context.Context) error {
+func (s *jsPullHandlerSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (s *jsPullChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
+func (s *jsPullHandlerSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) UnSubscribe() error {
+func (s *jsPullHandlerSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
 		return err
@@ -116,7 +116,7 @@ func (s *jsPullChanSubscription) UnSubscribe() error {
 	return nil
 }
 
-func (s *jsPullChanSubscription) run(ctx context.Context) {
+func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 	for {
 		select {
 		case <-s.ticker.C:
@@ -125,7 +125,7 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 
 			if fetchErr == nil {
 				for i := 0; i != len(msgList); i++ {
-					s.msgChannel <- msgList[i]
+					s.handler(msgList[i])
 				}
 
 				continue
@@ -145,13 +145,13 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 	}
 }
 
-func (s *jsPullChanSubscription) onDisconnect(conn *nats.Conn, err error) {
+func (s *jsPullHandlerSubscription) onDisconnect(conn *nats.Conn, err error) {
 	s.ticker.Stop()
 
 	return
 }
 
-func (s *jsPullChanSubscription) tryResubscribe() error {
+func (s *jsPullHandlerSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
@@ -164,9 +164,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
 
-			err = subsErr
-
-			time.Sleep(s.autoReSubscribeDelay)
+			time.Sleep(s.autoReSubscribeTimeout)
 			continue
 		}
 
@@ -183,11 +181,11 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPullChanSubscriptionService(logger *zap.Logger,
+func newJsPullHandlerSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
-	msgChannel chan *nats.Msg,
-) *jsPullChanSubscription {
+	handler func(msg *nats.Msg),
+) *jsPullHandlerSubscription {
 	l := logger.Named("subscription")
 
 	subOptions := []nats.SubOpt{
@@ -201,23 +199,24 @@ func newJsPullChanSubscriptionService(logger *zap.Logger,
 		)
 	}
 
-	return &jsPullChanSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ run stage
+	return &jsPullHandlerSubscription{
+		natsConn:  natsConn,
+		jsNatsCtx: nil,
+		natsSubs:  nil, // it will be set @ run stage
 
 		subjectName: consumerCfg.GetSubjectName(),
 		durableName: consumerCfg.GetDurableName(),
 
-		autoReSubscribe:      consumerCfg.IsAutoReSubscribeEnabled(),
-		autoReSubscribeCount: consumerCfg.GetAutoResubscribeCount(),
-		autoReSubscribeDelay: consumerCfg.GetAutoResubscribeDelay(),
-		subscribeNatsOptions: subOptions,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		fetchInterval: consumerCfg.GetFetchInterval(),
-		fetchLimit:    consumerCfg.GetFetchLimit(),
 		fetchTimeout:  consumerCfg.GetFetchTimeout(),
+		fetchLimit:    consumerCfg.GetFetchLimit(),
 
-		msgChannel: msgChannel,
+		handler: handler,
 
 		logger: l,
 	}

@@ -2,15 +2,9 @@ package nats
 
 import (
 	"context"
-	"errors"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
-)
-
-var (
-	ErrNilSubscribeInfo = errors.New("receive nil subscribe info")
 )
 
 // jsPullTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -25,6 +19,34 @@ type jsPullTypeChannelConsumerWorkerPool struct {
 	workers []*jsConsumerWorkerWrapper
 
 	logger *zap.Logger
+}
+
+func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
+	var err error
+
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].OnClosed(conn)
+		if loopErr != nil {
+			wp.logger.Error("unable to call onClosed in consumer worker pool unit", zap.Error(loopErr))
+
+			err = loopErr
+		}
+		wp.workers[i] = nil
+	}
+
+	wp.handler = nil
+	close(wp.msgChannel)
+
+	err = wp.pullSubscriber.OnClosed(conn)
+	if err != nil {
+		wp.logger.Error("unable to call onClosed in pull-type subscription service", zap.Error(err))
+	}
+
+	close(wp.msgChannel)
+	wp.handler = nil
+	wp.pullSubscriber = nil
+
+	return err
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
@@ -70,64 +92,44 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 		return err
 	}
 
-	return nil
-}
+	go func() {
+		<-ctx.Done()
 
-func (wp *jsPullTypeChannelConsumerWorkerPool) Shutdown(ctx context.Context) error {
-	for _, w := range wp.workers {
-		w.Stop()
-	}
-
-	err := wp.pullSubscriber.Shutdown(ctx)
-	if err != nil {
-		wp.logger.Warn("unable to shutdown unsubscribe")
-		return err
-	}
-
-	wp.handler = nil
-
-	close(wp.msgChannel)
-	wp.msgChannel = nil
+		err = wp.pullSubscriber.UnSubscribe()
+		if err != nil {
+			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+		}
+	}()
 
 	return nil
 }
 
 func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
 	jsNatsConn *nats.Conn,
-
-	workersCount uint16,
-	subjectName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	fetchInterval time.Duration,
-	fetchTimeout time.Duration,
-	fetchLimit uint,
-
+	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
 ) *jsPullTypeChannelConsumerWorkerPool {
-	msgChannel := make(chan *nats.Msg, workersCount)
+	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn,
-		subjectName, autoReSubscribe, autoReSubscribeCount, autoReSubscribeTimeout,
-		fetchInterval, fetchTimeout, fetchLimit, msgChannel)
+	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
 		handler:        handler,
 		logger:         logger,
 		msgChannel:     msgChannel,
-		subjectName:    subjectName,
+		subjectName:    consumerCfg.GetSubjectName(),
 		pullSubscriber: pullSubscriber,
 	}
 
-	for i := uint16(0); i < workersCount; i++ {
+	requeueDelays := consumerCfg.GetNakDelayTimings()
+
+	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
-			msgChannel:       msgChannel,
-			stopWorkerChanel: make(chan bool),
-			handler:          workersPool.handler,
-			logger:           logger,
+			msgChannel:        msgChannel,
+			handler:           workersPool.handler,
+			logger:            logger,
+			reQueueDelay:      requeueDelays,
+			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

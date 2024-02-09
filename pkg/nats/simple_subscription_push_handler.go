@@ -12,15 +12,23 @@ type simplePushChanSubscription struct {
 	natsConn *nats.Conn
 
 	subjectName string
-	groupName   string
 
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
 
-	msgChannel chan *nats.Msg
+	handler func(msg *nats.Msg)
 
 	logger *zap.Logger
+}
+
+func (s *simplePushChanSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.natsConn = nil
+
+	s.handler = nil
+
+	return nil
 }
 
 func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -59,7 +67,7 @@ func (s *simplePushChanSubscription) Init(ctx context.Context) error {
 }
 
 func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+	subs, err := s.natsConn.Subscribe(s.subjectName, s.handler)
 	if err != nil {
 		return err
 	}
@@ -69,7 +77,7 @@ func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Shutdown(ctx context.Context) error {
+func (s *simplePushChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
 		return err
@@ -86,7 +94,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
+		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -112,15 +120,8 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 func newSimplePushSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	groupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
-	msgChannel chan *nats.Msg,
+	consumerCfg consumerConfig,
+	handler func(msg *nats.Msg),
 ) *simplePushChanSubscription {
 	l := logger.Named("subscription")
 
@@ -128,14 +129,14 @@ func newSimplePushSubscriptionService(logger *zap.Logger,
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName: subjectName,
-		groupName:   groupName,
+		subjectName: consumerCfg.GetSubjectName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
-		msgChannel: msgChannel,
-		logger:     l,
+		handler: handler,
+
+		logger: l,
 	}
 }

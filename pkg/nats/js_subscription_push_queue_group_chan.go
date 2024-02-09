@@ -19,6 +19,7 @@ type jsPushQueueGroupChanSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	msgChannel chan *nats.Msg
 
@@ -39,6 +40,14 @@ func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (s *jsPushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.jsNatsCtx = nil
+	s.natsConn = nil
 
 	return nil
 }
@@ -74,17 +83,23 @@ func (s *jsPushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) Shutdown(ctx context.Context) error {
-	return s.natsSubs.Unsubscribe()
-}
-
 func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
+		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
 
 	s.natsSubs = subs
+
+	return nil
+}
+
+func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -100,9 +115,9 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	var err error = nil
-
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName, s.msgChannel)
+		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
+			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(err),
 				zap.Uint16(ResubscribeTag, i))
@@ -128,28 +143,33 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
-
+	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *jsPushQueueGroupChanSubscription {
 	l := logger.Named("subscription")
+
+	subOptions := []nats.SubOpt{
+		nats.AckWait(consumerCfg.GetAckWaitTiming()),
+	}
+
+	if consumerCfg.GetBackOffTimings() != nil {
+		subOptions = append(subOptions,
+			nats.BackOff(consumerCfg.GetBackOffTimings()),
+			nats.MaxDeliver(consumerCfg.GetMaxDeliveryCount()),
+		)
+	}
 
 	return &jsPushQueueGroupChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
 
-		subjectName:    subjectName,
-		queueGroupName: queueGroupName,
+		subjectName:    consumerCfg.GetSubjectName(),
+		queueGroupName: consumerCfg.GetQueueGroupName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
 		logger:     l,

@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"context"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 )
@@ -11,13 +12,11 @@ type producerWorkerWrapper struct {
 	natsProducerConn *nats.Conn
 	msgChannel       <-chan *nats.Msg
 
-	closeChanel chan bool
-
 	subject string
 	num     uint16
 }
 
-func (ww *producerWorkerWrapper) Run() {
+func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case v := <-ww.msgChannel:
@@ -27,11 +26,17 @@ func (ww *producerWorkerWrapper) Run() {
 					zap.String(QueueSubjectNameTag, v.Subject))
 			}
 
-		case <-ww.closeChanel:
+		case <-ctx.Done():
 			ww.logger.Info("producer worker. received close worker message")
 			return
 		}
 	}
+}
+
+func (ww *producerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+	ww.natsProducerConn = nil
+
+	return nil
 }
 
 func (ww *producerWorkerWrapper) PublishMsg(v *nats.Msg) error {
@@ -47,27 +52,20 @@ func (ww *producerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func (ww *producerWorkerWrapper) Stop() {
-	ww.closeChanel <- true
-}
-
 func newProducerWorker(logger *zap.Logger,
 	workerNum uint16,
 	msgChannel chan *nats.Msg,
 	subject string,
 	natsProducerConn *nats.Conn,
-	closeChan chan bool,
 ) *producerWorkerWrapper {
 	l := logger.Named("producer.service.worker").
-		With(zap.String(QueueSubjectNameTag, subject),
-			zap.Uint16(WorkerUnitNumberTag, workerNum))
+		With(zap.Uint16(WorkerUnitNumberTag, workerNum))
 
 	return &producerWorkerWrapper{
 		logger:           l,
 		msgChannel:       msgChannel,
 		subject:          subject,
 		natsProducerConn: natsProducerConn,
-		closeChanel:      closeChan,
 		num:              0,
 	}
 }

@@ -19,6 +19,7 @@ type jsPushQueueGroupHandlerSubscription struct {
 	autoReSubscribe        bool
 	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
 
 	handler func(msg *nats.Msg)
 
@@ -39,6 +40,15 @@ func (s *jsPushQueueGroupHandlerSubscription) OnReconnect(newConn *nats.Conn) er
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (s *jsPushQueueGroupHandlerSubscription) OnClosed(conn *nats.Conn) error {
+	s.natsSubs = nil
+	s.jsNatsCtx = nil
+	s.natsConn = nil
+	s.handler = nil
 
 	return nil
 }
@@ -74,24 +84,23 @@ func (s *jsPushQueueGroupHandlerSubscription) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *jsPushQueueGroupHandlerSubscription) Shutdown(ctx context.Context) error {
-	err := s.natsSubs.Unsubscribe()
-	if err != nil {
-		return err
-	}
-
-	s.handler = nil
-
-	return nil
-}
-
 func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) error {
-	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName, s.handler)
+	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
+		s.handler, s.subscribeNatsOptions...)
 	if err != nil {
 		return err
 	}
 
 	s.natsSubs = subs
+
+	return nil
+}
+
+func (s *jsPushQueueGroupHandlerSubscription) UnSubscribe() error {
+	err := s.natsSubs.Drain()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -104,7 +113,8 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
-		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName, s.handler)
+		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
+			s.handler, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
 				zap.Uint16(ResubscribeTag, i))
@@ -130,28 +140,34 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 
 func newJsPushQueueGroupHandlerSubscription(logger *zap.Logger,
 	natsConn *nats.Conn,
-
-	subjectName string,
-	queueGroupName string,
-
-	autoReSubscribe bool,
-	autoReSubscribeCount uint16,
-	autoReSubscribeTimeout time.Duration,
+	consumerCfg consumerConfigQueueGroup,
 
 	handler func(msg *nats.Msg),
 ) *jsPushQueueGroupHandlerSubscription {
 	l := logger.Named("subscription")
 
+	subOptions := []nats.SubOpt{
+		nats.AckWait(consumerCfg.GetAckWaitTiming()),
+	}
+
+	if consumerCfg.GetBackOffTimings() != nil {
+		subOptions = append(subOptions,
+			nats.BackOff(consumerCfg.GetBackOffTimings()),
+			nats.MaxDeliver(consumerCfg.GetMaxDeliveryCount()),
+		)
+	}
+
 	return &jsPushQueueGroupHandlerSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ Subscribe stage
 
-		subjectName:    subjectName,
-		queueGroupName: queueGroupName,
+		subjectName:    consumerCfg.GetSubjectName(),
+		queueGroupName: consumerCfg.GetQueueGroupName(),
 
-		autoReSubscribe:        autoReSubscribe,
-		autoReSubscribeCount:   autoReSubscribeCount,
-		autoReSubscribeTimeout: autoReSubscribeTimeout,
+		autoReSubscribe:        consumerCfg.IsAutoReSubscribeEnabled(),
+		autoReSubscribeCount:   consumerCfg.GetAutoResubscribeCount(),
+		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
+		subscribeNatsOptions:   subOptions,
 
 		handler: handler,
 		logger:  l,

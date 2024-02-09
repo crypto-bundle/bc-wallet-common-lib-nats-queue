@@ -5,10 +5,14 @@ import (
 	"time"
 )
 
+const (
+	DefaultAckWaitTiming = time.Second * 8
+)
+
 type NatsConfig struct {
 	NatsAddresses string `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
-	NatsUser      string `envconfig:"NATS_USER" default:"nats"`
-	NatsPassword  string `envconfig:"NATS_PASSWORD" default:"password"`
+	NatsUser      string `envconfig:"NATS_USER" required:"true" secret:"true"`
+	NatsPassword  string `envconfig:"NATS_PASSWORD" required:"true" secret:"true"`
 
 	NatsConnectionRetryOnFailed bool          `envconfig:"NATS_CONNECTION_RETRY" default:"true"`
 	NatsConnectionRetryCount    uint16        `envconfig:"NATS_CONNECTION_RETRY_COUNT" default:"30"`
@@ -90,4 +94,94 @@ func (c *NatsConfig) Prepare() error {
 
 func (c *NatsConfig) PrepareWith(dependenciesCfgSrvList ...interface{}) error {
 	return nil
+}
+
+type ConsumerConfig struct {
+	SubjectName string
+
+	WorkersCount uint32
+
+	AutoReSubscribeEnabled bool
+	AutoResubscribeCount   uint16
+	AutoResubscribeDelay   time.Duration
+
+	NakDelayTimings  []time.Duration
+	BackOffTimings   []time.Duration
+	MaxDeliveryCount int
+	AckWaitTiming    time.Duration
+}
+
+func (c *ConsumerConfig) GetSubjectName() string {
+	return c.SubjectName
+}
+
+func (c *ConsumerConfig) IsAutoReSubscribeEnabled() bool {
+	return c.AutoReSubscribeEnabled
+}
+
+func (c *ConsumerConfig) GetAutoResubscribeCount() uint16 {
+	return c.AutoResubscribeCount
+}
+
+func (c *ConsumerConfig) GetAutoResubscribeDelay() time.Duration {
+	return c.AutoResubscribeDelay
+}
+
+func (c *ConsumerConfig) GetBackOffTimings() []time.Duration {
+	return c.BackOffTimings
+}
+
+func (c *ConsumerConfig) GetMaxDeliveryCount() int {
+	return c.MaxDeliveryCount
+}
+
+func (c *ConsumerConfig) GetNakDelayTimings() []time.Duration {
+	return c.NakDelayTimings
+}
+
+func (c *ConsumerConfig) GetAckWaitTiming() time.Duration {
+	if c.AckWaitTiming == 0 {
+		return DefaultAckWaitTiming
+	}
+
+	return c.AckWaitTiming
+}
+
+func (c *ConsumerConfig) GetWorkersCount() uint32 {
+	return c.WorkersCount
+}
+
+type ConsumerConfigGrouped struct {
+	ConsumerConfig
+	QueueGroupName string
+}
+
+func (c *ConsumerConfigGrouped) GetQueueGroupName() string {
+	return c.QueueGroupName
+}
+
+type ConsumerConfigPullType struct {
+	ConsumerConfig
+
+	DurableName string
+
+	FetchInterval time.Duration
+	FetchTimeout  time.Duration
+	FetchLimit    uint
+}
+
+func (c *ConsumerConfigPullType) GetDurableName() string {
+	return c.DurableName
+}
+
+func (c *ConsumerConfigPullType) GetFetchInterval() time.Duration {
+	return c.FetchInterval
+}
+
+func (c *ConsumerConfigPullType) GetFetchTimeout() time.Duration {
+	return c.FetchTimeout
+}
+
+func (c *ConsumerConfigPullType) GetFetchLimit() uint {
+	return c.FetchLimit
 }

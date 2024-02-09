@@ -1,4 +1,4 @@
-module github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
+module gitlab.heronodes.io/bc-platform/bc-wallet-common-lib-nats-queue
 
 go 1.19
 
@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
