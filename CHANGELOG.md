@@ -1,64 +1,68 @@
 # Change Log
 
-## [v0.1.9] - 28.04.2023 12:03 MSK
-
+## [v0.0.1] - 06.02.2023 21:42 MSK
+### Added
+* Connection config
+* Connection wrapper with option management
+* Consumer flow wrapper
+  * Consumer worker pool for subscription via go-chanel 
+  * Consumer worker pool for subscription via pulling
+  * Consumer worker
+  * Added simple-queue consumer worker pool as independent service-component
+* Producer flow
+  * Producer worker pool
+  * Producer worker
+  * Added simple-queue producer worker pool as independent service-component
+* Added common-queue decision directives
+* Create consumer subscription as independent service component
+  * JetStream push-based subscription via go-chanel
+  * JetStream push-based queue-group subscription via go-chanel
+  * Simple-queue push-based subscription
 ### Changed
+* Removed check stream info for pull-type consumer worker-pool
+* Removed creation of stream in producer creation flow
+* Moved lib-nats-queue to another repository - https://github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
+### Fixed
+* Fixed nats-config default values 
 
-#### Switching to a proprietary license.
-License of **bc-wallet-common-lib-nats-queue** repository changed to proprietary - commit revision number **5b3d003be0dbb5cd0a4aa1ac942ac84827ba4595**.
+## [v0.1.0 - v0.1.7~refactoring] - 19.04.2023 - 22.04.2023
+### Added
+* Added onConnect/onReconnect handlers 
+### Changed
+* Refactoring of nats-queue consumer and producer flow
+  * Added producer and consumer management via connection wrapper
+  * Added more options for worker pools and subscription flow
+    * JetStream single worker queue-group push type consumer
+    * JetStream pull-type consumer via go-chanel
+    * JetStream queue-group push type consumer via go-chanel
 
-Origin repository - https://github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
+## [v0.1.8] - 23.04.2023
+### Changed
+* Small changes in connection wrapper service component
+  * Added consumer and producer counters
+* Added AckWait option for consumer worker
 
-The MIT license is replaced by me (_Kotelnikov Aleksei_) as an author and maintainer.
-
-The license has been replaced with a proprietary one, with the condition of maintaining the authorship
-and specifying in the README.md file in the section of authors and contributors.
-
-[@gudron (Kotelnikov Aleksei)](https://github.com/gudron) - author and maintainer of [crypto-bundle project](https://github.com/crypto-bundle)
-
-The commit is signed with the key -
-gudron2s@gmail.com
-E456BB23A18A9347E952DBC6655133DD561BF3EC
-
-## [v0.1.10] - 09.05.2023
+## [v0.1.9] - 09.02.2024
 ### Added
 * Nats helm-chart for local development. Chart cloned from [official Nats repository](https://github.com/nats-io/k8s/tree/main/helm/charts/nats)
-
-## [v0.1.11] - 09.05.2023
-### Changed
 * Helm-chart changes:
   * Metrics exporter - set enabled state to false
   * NatsBox containers - set enabled state to false
-
-## [v0.1.12] - 13.06.2023
-### Changed
 * Nats-config - added secret go-tag to nats user and password fields
-
-## [v0.1.13] - 08.10.2023
-### Added
 * Added NATS consumer config structs for
   * QueueGroup consumers
-  * Standart consumers
+  * Standard consumers
 * Added ReQueue delay option for Nack message case
 * Added passing SubOptions for all type of consumers
-
-## [v0.1.14] - 24.10.2023
-### Added
 * Added single worker producer service-component
-### Fixes
-* Nak delay timings
-
-## [v0.1.15] - 30.10.2023
-### Added
 * Single worker pull-type consumer
   * Consumer service-component
   * Consumer config
   * Subscription service-component
-### Changed
-* Remake shutdown flow for producer and consumer components - removed flow with calling Shutdown() function. 
-Added usage of context.WithCancel() flow.
-
-## [v0.1.16] - 4.11.2023
-### Added
 * AckWait option for consumers
 * Added Pull-type channel-based worker pool and subscription
+### Fixes
+* Nak delay timings
+### Changed
+* Remake shutdown flow for producer and consumer components - removed flow with calling Shutdown() function.
+  Added usage of context.WithCancel() flow.
