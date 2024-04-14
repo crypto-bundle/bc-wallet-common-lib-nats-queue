@@ -25,11 +25,39 @@ type Connection struct {
 	retryTimeOut time.Duration
 	retryCount   uint16
 
-	consumerCounter uint64
+	consumerCounter uint
 	consumers       []consumerService
 
-	producersCounter uint64
+	producersCounter uint
 	producers        []producerService
+}
+
+func (c *Connection) IsHealed(ctx context.Context) bool {
+	status := c.originConn.Status()
+	switch status {
+	case nats.DISCONNECTED, nats.CLOSED:
+		return false
+	default:
+		return c.healthCheckConsumers(ctx) && c.healthCheckProducers(ctx)
+	}
+}
+
+func (c *Connection) healthCheckConsumers(ctx context.Context) bool {
+	isHealed := true
+	for i := uint(0); i != c.consumerCounter; i++ {
+		isHealed = isHealed && c.consumers[i].Healthcheck(ctx)
+	}
+
+	return isHealed
+}
+
+func (c *Connection) healthCheckProducers(ctx context.Context) bool {
+	isHealed := true
+	for i := uint(0); i != c.producersCounter; i++ {
+		isHealed = isHealed && c.producers[i].Healthcheck(ctx)
+	}
+
+	return isHealed
 }
 
 // Connect ...
@@ -68,19 +96,19 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for i := uint64(0); i != c.producersCounter; i++ {
+	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnDisconnect(conn, err)
 		if producerErr != nil {
 			c.logger.Warn("unable to call onDisconnect on producer",
-				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
+				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
 		}
 	}
 
-	for i := uint64(0); i != c.consumerCounter; i++ {
+	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
 			c.logger.Warn("unable to call onDisconnect on consumer",
-				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
+				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
 		}
 	}
 }
@@ -91,19 +119,19 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for i := uint64(0); i != c.producersCounter; i++ {
+	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnClosed(newConn)
 		if producerErr != nil {
 			c.logger.Warn("unable to call onClosed on producer",
-				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
+				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
 		}
 	}
 
-	for i := uint64(0); i != c.consumerCounter; i++ {
+	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnClosed(newConn)
 		if consumerErr != nil {
 			c.logger.Warn("unable to call onClosed on consumer",
-				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
+				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
 		}
 	}
 }
@@ -116,19 +144,19 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for i := uint64(0); i != c.producersCounter; i++ {
+	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnReconnect(newConn)
 		if producerErr != nil {
 			c.logger.Warn("unable to call onReconnect on producer",
-				zap.Error(producerErr), zap.Uint64(ProducerIndex, i))
+				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
 		}
 	}
 
-	for i := uint64(0); i != c.consumerCounter; i++ {
+	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnReconnect(newConn)
 		if consumerErr != nil {
 			c.logger.Warn("unable to call onReconnect on consumer",
-				zap.Error(consumerErr), zap.Uint64(ConsumerIndex, i))
+				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
 		}
 	}
 }
