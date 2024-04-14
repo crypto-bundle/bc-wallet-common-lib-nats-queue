@@ -68,3 +68,7 @@
   Added usage of context.WithCancel() flow.
 * Changed go-namespace.
 * Changed licence in README.md and LICENSE files
+
+## [v0.1.10] - 14.04.2024
+### Added
+* Added support of healthcheck flow, which required by [lib-healthcheck](https://github.com/crypto-bundle/bc-wallet-common-lib-healthcheck)
