@@ -72,3 +72,8 @@
 ## [v0.1.10] - 14.04.2024
 ### Added
 * Added support of healthcheck flow, which required by [lib-healthcheck](https://github.com/crypto-bundle/bc-wallet-common-lib-healthcheck)
+
+## [v0.1.11] - 15.04.2024
+### Changed
+* Replace github.com/golang/protobuf/ -> google.golang.org/protobuf 
+* Bump nats dependency version

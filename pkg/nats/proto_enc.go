@@ -2,7 +2,7 @@ package nats
 
 import (
 	"errors"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const PROTOBUF_ENCODER = "protobuf"
