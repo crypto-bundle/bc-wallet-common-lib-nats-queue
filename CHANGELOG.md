@@ -77,3 +77,7 @@
 ### Changed
 * Replace github.com/golang/protobuf/ -> google.golang.org/protobuf 
 * Bump nats dependency version
+
+## [v0.1.12] - 17.04.2024
+### Changed
+* Bump golang version 1.19 -> 1.22
