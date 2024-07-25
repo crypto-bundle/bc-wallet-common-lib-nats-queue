@@ -2,10 +2,10 @@ package nats
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 type jsPushQueueGroupChanSubscription struct {
@@ -23,7 +23,7 @@ type jsPushQueueGroupChanSubscription struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -58,13 +58,13 @@ func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err err
 
 func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats originConn")
+		s.logger.Print("subscription: lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Warn("consumer lost nats subscription")
+		s.logger.Print("subscription: lost NATS subscription")
 
 		return false
 	}
@@ -119,8 +119,8 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(err),
-				zap.Uint16(ResubscribeTag, i))
+			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
+				ResubscribeTag, i, subsErr)
 
 			err = subsErr
 
@@ -130,8 +130,9 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Info("re-subscription success")
-		break
+		s.logger.Print("subscription: re-subscription success")
+
+		return nil
 	}
 
 	if err != nil {
@@ -141,12 +142,11 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
+func newJsPushQueueGroupChanSubscriptionService(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *jsPushQueueGroupChanSubscription {
-	l := logger.Named("subscription")
 
 	subOptions := []nats.SubOpt{
 		nats.AckWait(consumerCfg.GetAckWaitTiming()),
@@ -172,6 +172,6 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger:     l,
+		logger:     logger,
 	}
 }

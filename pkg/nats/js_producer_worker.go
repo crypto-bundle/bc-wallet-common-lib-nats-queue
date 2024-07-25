@@ -3,9 +3,9 @@ package nats
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 type ProducerWorkerTask func(msg nats.Msg) error
@@ -16,7 +16,7 @@ var (
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	logger     *zap.Logger
+	logger     *log.Logger
 	msgChannel <-chan *nats.Msg
 	jsInfo     *nats.StreamInfo
 
@@ -41,13 +41,12 @@ func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Error("send message to broker service failed", zap.Error(err),
-					zap.String(QueueSubjectNameTag, v.Subject),
-					zap.String(QueueStreamNameTag, ww.jsInfo.Config.Name))
+				ww.logger.Printf("producer worker: %s - %e",
+					"unable to send message to broker service", err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Info("producer worker. received close worker message")
+			ww.logger.Print("producer worker: received close worker message")
 			return
 		}
 	}
@@ -64,29 +63,27 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	}
 
 	if pubAck == nil {
-		ww.logger.Error("received nil pubAck", zap.Error(ErrNilPubAck))
+		ww.logger.Printf("producer worker: %s - %e",
+			"received nil pubAck", ErrNilPubAck)
 		return ErrNilPubAck
 	}
 
 	return nil
 }
 
-func newJsProducerWorker(logger *zap.Logger,
+func newJsProducerWorker(logger *log.Logger,
 	natsProducerConn nats.JetStreamContext,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
 ) *jsProducerWorkerWrapper {
-	l := logger.Named("producer.service.worker").
-		With(zap.Uint32(WorkerUnitNumberTag, workerNum))
-
 	return &jsProducerWorkerWrapper{
-		logger:           l,
+		logger:           logger,
 		msgChannel:       msgChannel,
 		streamName:       streamName,
 		subjects:         subjects,
 		natsProducerConn: natsProducerConn,
-		num:              0,
+		num:              uint16(workerNum),
 	}
 }

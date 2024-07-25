@@ -2,11 +2,12 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
-	"go.uber.org/zap/zaptest"
+	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/nats-io/nats.go"
 )
 
 type handler func(ctx context.Context, msg *nats.Msg) (ConsumerDirective, error)
@@ -16,8 +17,6 @@ func (h handler) Process(ctx context.Context, msg *nats.Msg) (ConsumerDirective,
 }
 
 func TestJsPushTypeChannelConsumerWorkersPool(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := NewConnection(ctx, &NatsConfig{
@@ -35,7 +34,7 @@ func TestJsPushTypeChannelConsumerWorkersPool(t *testing.T) {
 		NatsSubscriptionReDeliveryTimeout: time.Second * 3,
 
 		nastAddresses: nil,
-	}, logger)
+	}, log.Default())
 
 	err := conn.Connect()
 	if err != nil {

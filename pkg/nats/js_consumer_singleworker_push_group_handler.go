@@ -2,9 +2,9 @@ package nats
 
 import (
 	"context"
+	"log"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 // jsPushTypeQueueGroupConsumer is a minimal Worker implementation that simply wraps a
@@ -13,7 +13,7 @@ type jsConsumerPushQueueGroupSingeWorker struct {
 
 	worker *jsConsumerWorkerWrapper
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -37,7 +37,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("unable to call onClosed in consumer worker unit", zap.Error(err))
+		wp.logger.Printf("consumer: unable to call onClosed in pull-type subscription service - %e", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -69,20 +69,18 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
 		}
 	}()
 
 	return nil
 }
 
-func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
+func NewJsConsumerPushQueueGroupSingeWorker(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsConsumerPushQueueGroupSingeWorker {
-	l := logger.Named("consumer_worker_pool")
-
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	ww := &jsConsumerWorkerWrapper{
@@ -96,7 +94,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *zap.Logger,
 	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger:          l,
+		logger:          logger,
 		subscriptionSvc: subscriptionSrv,
 		worker:          ww,
 	}

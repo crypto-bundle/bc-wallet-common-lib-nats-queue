@@ -2,7 +2,7 @@ package nats
 
 import (
 	"context"
-	"go.uber.org/zap"
+	"log"
 	"sync"
 	"time"
 
@@ -16,7 +16,7 @@ type Connection struct {
 
 	cfg     configParams
 	options []nats.Option
-	logger  *zap.Logger
+	logger  *log.Logger
 
 	user      string
 	password  string
@@ -84,14 +84,14 @@ func (c *Connection) GetConnection() *nats.Conn {
 func (c *Connection) Close() error {
 	c.originConn.Close()
 
-	c.logger.Info("nats connection successfully closed")
+	c.logger.Print("connection: nats connection successfully closed")
 
 	return nil
 }
 
 func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
-	c.logger.Warn("received on DisconnectErr event - calling OnDisconnect on all consumers/producers",
-		zap.Error(err))
+	c.logger.Printf("%s - %e",
+		"connection: received on DisconnectErr event - calling OnDisconnect on all consumers/producers", err)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -99,22 +99,22 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnDisconnect(conn, err)
 		if producerErr != nil {
-			c.logger.Warn("unable to call onDisconnect on producer",
-				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onDisconnect on producer", ProducerIndex, i, err)
 		}
 	}
 
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
-			c.logger.Warn("unable to call onDisconnect on consumer",
-				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onDisconnect on consumer", ConsumerIndex, i, err)
 		}
 	}
 }
 
 func (c *Connection) onClosed(newConn *nats.Conn) {
-	c.logger.Warn("received onClosed event - calling OnClosed on all consumers/producers")
+	c.logger.Print("connection: received onClosed event - calling OnClosed on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -122,16 +122,16 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnClosed(newConn)
 		if producerErr != nil {
-			c.logger.Warn("unable to call onClosed on producer",
-				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onClosed on producer", ProducerIndex, i, producerErr)
 		}
 	}
 
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnClosed(newConn)
 		if consumerErr != nil {
-			c.logger.Warn("unable to call onClosed on consumer",
-				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onClosed on consumer", ConsumerIndex, i, consumerErr)
 		}
 	}
 }
@@ -139,7 +139,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 func (c *Connection) onReconnect(newConn *nats.Conn) {
 	c.originConn = newConn
 
-	c.logger.Warn("received on OnReconnect event - calling OnReconnect on all consumers/producers")
+	c.logger.Print("connection: received on OnReconnect event - calling OnReconnect on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -147,16 +147,16 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnReconnect(newConn)
 		if producerErr != nil {
-			c.logger.Warn("unable to call onReconnect on producer",
-				zap.Error(producerErr), zap.Uint(ProducerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onReconnect on producer", ProducerIndex, i, producerErr)
 		}
 	}
 
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnReconnect(newConn)
 		if consumerErr != nil {
-			c.logger.Warn("unable to call onReconnect on consumer",
-				zap.Error(consumerErr), zap.Uint(ConsumerIndex, i))
+			c.logger.Printf("%s [%s: %d] - %e",
+				"connection: unable to call onReconnect on consumer", ConsumerIndex, i, consumerErr)
 		}
 	}
 }
@@ -164,7 +164,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 // NewConnection nats originConn instance
 func NewConnection(ctx context.Context,
 	cfg configParams,
-	logger *zap.Logger,
+	logger *log.Logger,
 ) *Connection {
 	options := make([]nats.Option, 0)
 	if cfg.IsRetryOnConnectionFailed() {

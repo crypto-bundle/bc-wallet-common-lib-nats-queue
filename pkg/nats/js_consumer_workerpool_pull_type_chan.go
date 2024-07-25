@@ -2,9 +2,9 @@ package nats
 
 import (
 	"context"
+	"log"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 // jsPullTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -18,7 +18,7 @@ type jsPullTypeChannelConsumerWorkerPool struct {
 	handler consumerHandler
 	workers []*jsConsumerWorkerWrapper
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -27,7 +27,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in consumer worker pool unit", zap.Error(loopErr))
+			wp.logger.Printf("consumer: unable to call onClosed in consumer worker pool unit - %e", loopErr)
 
 			err = loopErr
 		}
@@ -39,7 +39,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 	err = wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("unable to call onClosed in pull-type subscription service", zap.Error(err))
+		wp.logger.Printf("consumer: unable to call onClosed in pull-type subscription service - %e", err)
 	}
 
 	close(wp.msgChannel)
@@ -97,14 +97,14 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.pullSubscriber.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
 		}
 	}()
 
 	return nil
 }
 
-func NewJsPullTypeConsumerWorkersPool(logger *zap.Logger,
+func NewJsPullTypeConsumerWorkersPool(logger *log.Logger,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,

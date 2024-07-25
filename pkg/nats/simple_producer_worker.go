@@ -3,12 +3,13 @@ package nats
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
+	"log"
 )
 
 // producerWorkerWrapper ...
 type producerWorkerWrapper struct {
-	logger           *zap.Logger
+	logger *log.Logger
+
 	natsProducerConn *nats.Conn
 	msgChannel       <-chan *nats.Msg
 
@@ -22,12 +23,12 @@ func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Error("send message to broker service failed", zap.Error(err),
-					zap.String(QueueSubjectNameTag, v.Subject))
+				ww.logger.Printf("producer pool: send message to broker service failed - %e",
+					err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Info("producer worker. received close worker message")
+			ww.logger.Printf("producer worker: received close worker message")
 			return
 		}
 	}
@@ -52,20 +53,17 @@ func (ww *producerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func newProducerWorker(logger *zap.Logger,
+func newProducerWorker(logger *log.Logger,
 	workerNum uint16,
 	msgChannel chan *nats.Msg,
 	subject string,
 	natsProducerConn *nats.Conn,
 ) *producerWorkerWrapper {
-	l := logger.Named("producer.service.worker").
-		With(zap.Uint16(WorkerUnitNumberTag, workerNum))
-
 	return &producerWorkerWrapper{
-		logger:           l,
+		logger:           logger,
 		msgChannel:       msgChannel,
 		subject:          subject,
 		natsProducerConn: natsProducerConn,
-		num:              0,
+		num:              workerNum,
 	}
 }

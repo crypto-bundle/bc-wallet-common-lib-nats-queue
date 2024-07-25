@@ -2,7 +2,7 @@ package nats
 
 import (
 	"context"
-	"go.uber.org/zap"
+	"log"
 	"sync/atomic"
 
 	"github.com/nats-io/nats.go"
@@ -10,7 +10,7 @@ import (
 
 // jsProducerWorkerPool is a minimal Worker implementation that simply wraps a
 type jsProducerWorkerPool struct {
-	logger *zap.Logger
+	logger *log.Logger
 
 	msgChannel chan *nats.Msg
 	streamName string
@@ -28,7 +28,7 @@ func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in producer pool unit", zap.Error(loopErr))
+			wp.logger.Printf("producer pool: unable to call onClosed in producer worker pool unit - %e", loopErr)
 
 			return loopErr
 		}
@@ -61,11 +61,10 @@ func (wp *jsProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 
 func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	if !wp.natsConn.IsConnected() {
-		wp.logger.Warn("producer lost nats originConn")
+		wp.logger.Print("producer pool: lost NATS origin connection")
 
 		return false
 	}
-
 	return true
 }
 
@@ -105,16 +104,14 @@ func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) 
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewJsProducerWorkersPool(logger *zap.Logger,
+func NewJsProducerWorkersPool(logger *log.Logger,
 	natsProducerConn *nats.Conn,
 	workersCount uint32,
 	streamName string,
 	subjects []string,
 ) *jsProducerWorkerPool {
-	l := logger.Named("producer.service")
-
 	workersPool := &jsProducerWorkerPool{
-		logger:     l,
+		logger:     logger,
 		msgChannel: make(chan *nats.Msg, workersCount),
 		streamName: streamName,
 		subjects:   subjects,

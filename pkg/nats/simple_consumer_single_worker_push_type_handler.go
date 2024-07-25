@@ -3,7 +3,7 @@ package nats
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
+	"log"
 )
 
 // simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps a
@@ -13,7 +13,7 @@ type simpleConsumerSingeWorker struct {
 	handler func(msg *nats.Msg)
 	worker  *jsConsumerWorkerWrapper
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -56,13 +56,11 @@ func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewSimpleConsumerSingeWorker(logger *zap.Logger,
+func NewSimpleConsumerSingeWorker(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsConsumerPushQueueGroupSingeWorker {
-	l := logger.Named("consumer_worker_pool")
-
 	ww := &jsConsumerWorkerWrapper{
 		msgChannel:   nil, // cuz channel-less single-worker worker pool
 		logger:       logger,
@@ -73,7 +71,7 @@ func NewSimpleConsumerSingeWorker(logger *zap.Logger,
 	subscriptionSrv := newSimplePushSubscriptionService(logger, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger:          l,
+		logger:          logger,
 		subscriptionSvc: subscriptionSrv,
 		worker:          ww,
 	}

@@ -3,12 +3,12 @@ package nats
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
+	"log"
 )
 
 // jsProducerSingleWorker ...
 type jsProducerSingleWorker struct {
-	logger *zap.Logger
+	logger *log.Logger
 
 	streamName string
 	subjects   []string
@@ -43,7 +43,7 @@ func (sw *jsProducerSingleWorker) OnDisconnect(conn *nats.Conn, err error) error
 
 func (sw *jsProducerSingleWorker) Healthcheck(ctx context.Context) bool {
 	if !sw.natsProducerConn.IsConnected() {
-		sw.logger.Warn("producer lost nats originConn")
+		sw.logger.Print("subscription: lost NATS origin connection")
 
 		return false
 	}
@@ -69,14 +69,14 @@ func (sw *jsProducerSingleWorker) Run(ctx context.Context) error {
 func (sw *jsProducerSingleWorker) Produce(ctx context.Context, msg *nats.Msg) {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Error("unable to produce nats message", zap.Error(err))
+		sw.logger.Printf("producer: unable to produce nats message - %e", err)
 	}
 }
 
 func (sw *jsProducerSingleWorker) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Error("unable to produce nats message", zap.Error(err))
+		sw.logger.Printf("producer: unable to produce nats message - %e", err)
 
 		return err
 	}
@@ -91,7 +91,8 @@ func (sw *jsProducerSingleWorker) produce(ctx context.Context, msg *nats.Msg) er
 	}
 
 	if pubAck == nil {
-		sw.logger.Error("received nil pubAck", zap.Error(ErrNilPubAck))
+		sw.logger.Printf("producer: %s - %e",
+			"received nil pubAck", ErrNilPubAck)
 
 		return ErrNilPubAck
 	}
@@ -99,15 +100,13 @@ func (sw *jsProducerSingleWorker) produce(ctx context.Context, msg *nats.Msg) er
 	return nil
 }
 
-func NewJsProducerSingleWorkerService(logger *zap.Logger,
+func NewJsProducerSingleWorkerService(logger *log.Logger,
 	natsProducerConn *nats.Conn,
 	streamName string,
 	subjects []string,
 ) *jsProducerSingleWorker {
-	l := logger.Named("producer.service")
-
 	workersPool := &jsProducerSingleWorker{
-		logger:     l,
+		logger:     logger,
 		streamName: streamName,
 		subjects:   subjects,
 

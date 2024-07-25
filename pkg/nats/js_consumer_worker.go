@@ -2,10 +2,10 @@ package nats
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 // jsConsumerWorkerWrapper ...
@@ -14,7 +14,7 @@ type jsConsumerWorkerWrapper struct {
 
 	handler consumerHandler
 
-	logger *zap.Logger
+	logger *log.Logger
 
 	maxRedeliveryCount uint64
 	reQueueDelayCount  uint64
@@ -32,12 +32,12 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			ww.logger.Info("consumer worker. received close worker message")
+			ww.logger.Print("consumer worker: received close worker message")
 			return
 
 		case v, ok := <-ww.msgChannel:
 			if !ok {
-				ww.logger.Warn("consumer worker. nats message channel is closed")
+				ww.logger.Print("consumer worker: nats message channel is closed")
 				return
 			}
 
@@ -53,16 +53,21 @@ func (ww *jsConsumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
 func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 	msgMetaData, err := msg.Metadata()
 	if err != nil {
-		ww.logger.Error("unable to get message metadata", zap.Error(err),
-			zap.String(SubjectTag, msg.Subject))
+		ww.logger.Printf("consumer: %s: %s, error: %e",
+			SubjectTag, msg.Subject, err)
 	}
 
 	decisionDirective, err := ww.handler.Process(context.Background(), msg)
+	if err != nil {
+		ww.logger.Printf("consumer: proccess message ended with error - %e. decision directive - %s",
+			err, decisionDirective)
+	}
+
 	switch {
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
-			ww.logger.Error("unable to ACK message", zap.Error(arrErr), zap.Any("message", msg))
+			ww.logger.Printf("consumer worker: unable to ACK message - error: %e", arrErr)
 		}
 
 	case decisionDirective == DirectiveForReQueue:
@@ -75,13 +80,13 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 
 		nakErr := msg.NakWithDelay(delay)
 		if nakErr != nil {
-			ww.logger.Error("unable to RE-QUEUE message", zap.Error(nakErr), zap.Any("message", msg))
+			ww.logger.Printf("consumer worker: unable to RE-QUEUE message - error: %e", nakErr)
 		}
 
 	case decisionDirective == DirectiveForReject:
 		termErr := msg.Term()
 		if termErr != nil {
-			ww.logger.Error("unable to REJECTION-ACK message", zap.Error(err), zap.Any("message", msg))
+			ww.logger.Printf("consumer worker: unable to REJECTION-ACK message - error: %e", err)
 		}
 	}
 }

@@ -2,10 +2,10 @@ package nats
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 type jsPushSubscription struct {
@@ -22,7 +22,7 @@ type jsPushSubscription struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
@@ -57,13 +57,13 @@ func (s *jsPushSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 
 func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats originConn")
+		s.logger.Print("subscription: lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Warn("consumer lost nats subscription")
+		s.logger.Print("subscription: lost NATS subscription")
 
 		return false
 	}
@@ -112,8 +112,10 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
-				zap.Uint16(ResubscribeTag, i))
+			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
+				ResubscribeTag, i, subsErr)
+
+			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
 			continue
@@ -121,8 +123,9 @@ func (s *jsPushSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Info("re-subscription success")
-		break
+		s.logger.Print("subscription: re-subscription success")
+
+		return nil
 	}
 
 	if err != nil {
@@ -132,14 +135,12 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPushSubscriptionService(logger *zap.Logger,
+func newJsPushSubscriptionService(logger *log.Logger,
 	natsConn *nats.Conn,
 
 	consumerCfg consumerConfig,
 	msgChannel chan *nats.Msg,
 ) *jsPushSubscription {
-	l := logger.Named("subscription")
-
 	subOptions := []nats.SubOpt{
 		nats.AckWait(consumerCfg.GetAckWaitTiming()),
 	}
@@ -163,6 +164,6 @@ func newJsPushSubscriptionService(logger *zap.Logger,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger:     l,
+		logger:     logger,
 	}
 }

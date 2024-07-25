@@ -3,7 +3,7 @@ package nats
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
+	"log"
 )
 
 // simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -15,7 +15,7 @@ type simpleConsumerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -24,7 +24,7 @@ func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in simple producer pool unit", zap.Error(loopErr))
+			wp.logger.Printf("consumer: unable to call onClosed in simple producer pool unit - %e", loopErr)
 
 			err = loopErr
 		}
@@ -71,7 +71,7 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.subscriptionSrv.Subscribe(ctx)
 	if err != nil {
-		wp.logger.Error("unable to subscribe", zap.Error(err))
+		wp.logger.Printf("consumer: unable to subscribe - %e", err)
 	}
 
 	go func() {
@@ -79,28 +79,30 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSrv.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			if err != nil {
+				wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
+			}
 		}
+
+		wp.logger.Printf("consumer: successfully unSubscribed")
 	}()
 
 	return nil
 }
 
-func NewSimpleConsumerWorkersPool(logger *zap.Logger,
+func NewSimpleConsumerWorkersPool(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *simpleConsumerWorkerPool {
-	l := logger.Named("consumer_pool")
-
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(l, natsConn,
+	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(logger, natsConn,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
 		handler: handler,
-		logger:  l,
+		logger:  logger,
 
 		subscriptionSrv: subscriptionSrv,
 
@@ -111,7 +113,7 @@ func NewSimpleConsumerWorkersPool(logger *zap.Logger,
 		ww := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger:     l.With(zap.Uint32(WorkerUnitNumberTag, i)),
+			logger:     logger,
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

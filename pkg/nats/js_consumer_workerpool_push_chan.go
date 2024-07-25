@@ -2,9 +2,9 @@ package nats
 
 import (
 	"context"
+	"log"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 // jsPushTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -16,7 +16,7 @@ type jsPushTypeChannelConsumerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -25,7 +25,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in consumer worker pool unit", zap.Error(loopErr))
+			wp.logger.Printf("consumer: unable to call onClosed in consumer worker pool unit - %e", loopErr)
 
 			err = loopErr
 		}
@@ -34,7 +34,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 	err = wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("unable to call onClosed in subscription service", zap.Error(err))
+		wp.logger.Printf("consumer: unable to call onClosed in subscription service - %e", err)
 	}
 
 	close(wp.msgChannel)
@@ -85,10 +85,10 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
 		}
 
-		wp.logger.Info("successfully unsubscribed")
+		wp.logger.Printf("consumer: successfully unSubscribed")
 
 		return
 	}()
@@ -96,21 +96,19 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
+func NewJsPushTypeChannelConsumerWorkersPool(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
 	handler consumerHandler,
 ) *jsPushTypeChannelConsumerWorkerPool {
-	l := logger.Named("queue_consumer_pool.service")
-
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushSubscriptionService(l, natsConn, consumerCfg,
+	subscriptionSrv := newJsPushSubscriptionService(logger, natsConn, consumerCfg,
 		msgChannel)
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler:         handler,
-		logger:          l,
+		logger:          logger,
 		subscriptionSvc: subscriptionSrv,
 		msgChannel:      msgChannel,
 	}
@@ -121,7 +119,7 @@ func NewJsPushTypeChannelConsumerWorkersPool(logger *zap.Logger,
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel:        msgChannel,
 			handler:           workersPool.handler,
-			logger:            l.With(zap.Uint32(WorkerUnitNumberTag, i)),
+			logger:            logger,
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}

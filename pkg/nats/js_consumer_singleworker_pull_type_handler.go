@@ -2,9 +2,9 @@ package nats
 
 import (
 	"context"
+	"log"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 // jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps a
@@ -13,7 +13,7 @@ type jsPullTypeHandlerConsumer struct {
 
 	worker *jsConsumerWorkerWrapper
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
@@ -21,7 +21,7 @@ func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
 
 	err = wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("unable to call onClosed in pull-type subscription service", zap.Error(err))
+		wp.logger.Printf("consumer: unable to call onClosed in pull-type subscription service - %e", err)
 	}
 
 	wp.pullSubscriber = nil
@@ -71,14 +71,14 @@ func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 
 		err = wp.pullSubscriber.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
 		}
 	}()
 
 	return nil
 }
 
-func NewJsPullTypeHandlerConsumer(logger *zap.Logger,
+func NewJsPullTypeHandlerConsumer(logger *log.Logger,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,

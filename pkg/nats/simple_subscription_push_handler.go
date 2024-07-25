@@ -3,7 +3,7 @@ package nats
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
+	"log"
 	"time"
 )
 
@@ -19,7 +19,7 @@ type simplePushChanSubscription struct {
 
 	handler func(msg *nats.Msg)
 
-	logger *zap.Logger
+	logger *log.Logger
 }
 
 func (s *simplePushChanSubscription) OnClosed(conn *nats.Conn) error {
@@ -48,13 +48,13 @@ func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) er
 
 func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats originConn")
+		s.logger.Print("subscription: lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Warn("consumer lost nats subscription")
+		s.logger.Print("subscription: lost NATS subscription")
 
 		return false
 	}
@@ -96,8 +96,8 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(subsErr),
-				zap.Uint16(ResubscribeTag, i))
+			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
+				ResubscribeTag, i, subsErr)
 
 			err = subsErr
 
@@ -107,8 +107,9 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Info("re-subscription success")
-		break
+		s.logger.Print("subscription: re-subscription success")
+
+		return nil
 	}
 
 	if err != nil {
@@ -118,13 +119,11 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushSubscriptionService(logger *zap.Logger,
+func newSimplePushSubscriptionService(logger *log.Logger,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
 	handler func(msg *nats.Msg),
 ) *simplePushChanSubscription {
-	l := logger.Named("subscription")
-
 	return &simplePushChanSubscription{
 		natsConn: natsConn,
 		natsSubs: nil, // it will be set @ run stage
@@ -137,6 +136,6 @@ func newSimplePushSubscriptionService(logger *zap.Logger,
 
 		handler: handler,
 
-		logger: l,
+		logger: logger,
 	}
 }
