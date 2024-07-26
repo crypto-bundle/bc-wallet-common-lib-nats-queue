@@ -16,7 +16,9 @@ type Connection struct {
 
 	cfg     configParams
 	options []nats.Option
-	logger  *log.Logger
+
+	stdLoggerFactory loggerService
+	logger           *log.Logger
 
 	user      string
 	password  string
@@ -164,7 +166,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 // NewConnection nats originConn instance
 func NewConnection(ctx context.Context,
 	cfg configParams,
-	logger *log.Logger,
+	loggerFactorySvc loggerService,
 ) *Connection {
 	options := make([]nats.Option, 0)
 	if cfg.IsRetryOnConnectionFailed() {
@@ -177,7 +179,10 @@ func NewConnection(ctx context.Context,
 	nats.RegisterEncoder(PROTOBUF_ENCODER, &ProtobufEncoder{})
 
 	conn := &Connection{
-		logger:     logger,
+		stdLoggerFactory: loggerFactorySvc,
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsConnectionUnitNameTag,
+		}),
 		originConn: nil, // will be settled @ Connect receiver-function call
 		options:    options,
 

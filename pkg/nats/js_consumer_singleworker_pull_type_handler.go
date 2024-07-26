@@ -78,7 +78,7 @@ func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewJsPullTypeHandlerConsumer(logger *log.Logger,
+func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
@@ -87,19 +87,28 @@ func NewJsPullTypeHandlerConsumer(logger *log.Logger,
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	ww := &jsConsumerWorkerWrapper{
-		msgChannel:        nil, // cuz channel-less single-worker worker pool
-		logger:            logger,
+		msgChannel: nil, // cuz channel-less single-worker worker pool
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
+		}),
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	pullSubscriber := newJsPullHandlerSubscriptionService(logger, jsNatsConn,
+	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc.WithFields("nats",
+		map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
+		}), jsNatsConn,
 		consumerCfg, ww.ProcessMsg)
 
 	return &jsPullTypeHandlerConsumer{
 		pullSubscriber: pullSubscriber,
 		worker:         ww,
-		logger:         logger,
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsSubscriptionUnitWorkerNameTag,
+			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
+		}),
 	}
 }

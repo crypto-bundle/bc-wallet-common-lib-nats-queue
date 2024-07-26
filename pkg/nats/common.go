@@ -2,6 +2,7 @@ package nats
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -75,9 +76,8 @@ type consumerService interface {
 	Run(ctx context.Context) error
 }
 
-type consumerWorker interface {
-	Run(ctx context.Context) error
-	ProcessMsg(msg *nats.Msg)
+type loggerService interface {
+	WithFields(name string, fields map[string]interface{}) *log.Logger
 }
 
 type producerService interface {

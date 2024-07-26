@@ -104,18 +104,25 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewJsPullTypeConsumerWorkersPool(logger *log.Logger,
+func NewJsPullTypeConsumerWorkersPool(loggerFactorySvc loggerService,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
 ) *jsPullTypeChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	pullSubscriber := newJsPullChanSubscriptionService(logger, jsNatsConn, consumerCfg, msgChannel)
+	pullSubscriber := newJsPullChanSubscriptionService(loggerFactorySvc.WithFields("nats",
+		map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+			natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
+		}), jsNatsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
-		handler:        handler,
-		logger:         logger,
+		handler: handler,
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamConsumerWorkerPoolUnitNameTag,
+			natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
+		}),
 		msgChannel:     msgChannel,
 		subjectName:    consumerCfg.GetSubjectName(),
 		pullSubscriber: pullSubscriber,
@@ -125,9 +132,13 @@ func NewJsPullTypeConsumerWorkersPool(logger *log.Logger,
 
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
 		ww := &jsConsumerWorkerWrapper{
-			msgChannel:        msgChannel,
-			handler:           workersPool.handler,
-			logger:            logger,
+			msgChannel: msgChannel,
+			handler:    workersPool.handler,
+			logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+				natsFunctionalUnitTag: natsSubscriptionUnitWorkerNameTag,
+				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
+				workerUnitNumberTag:   i,
+			}),
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}

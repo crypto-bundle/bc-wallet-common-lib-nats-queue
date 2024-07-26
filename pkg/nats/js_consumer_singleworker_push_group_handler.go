@@ -76,7 +76,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewJsConsumerPushQueueGroupSingeWorker(logger *log.Logger,
+func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
@@ -84,18 +84,27 @@ func NewJsConsumerPushQueueGroupSingeWorker(logger *log.Logger,
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	ww := &jsConsumerWorkerWrapper{
-		msgChannel:        nil, // cuz channel-less single-worker worker pool
-		logger:            logger,
+		msgChannel: nil, // cuz channel-less single-worker worker pool
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
+		}),
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	subscriptionSrv := newJsPushQueueGroupHandlerSubscription(logger, natsConn, consumerCfg, ww.ProcessMsg)
+	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(loggerFactorySvc.WithFields("nats",
+		map[string]interface{}{
+			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+		}), natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger:          logger,
-		subscriptionSvc: subscriptionSrv,
+		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			natsFunctionalUnitTag: natsSubscriptionUnitWorkerNameTag,
+			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+		}),
+		subscriptionSvc: subscriptionSvc,
 		worker:          ww,
 	}
 
