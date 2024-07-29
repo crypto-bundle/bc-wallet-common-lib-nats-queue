@@ -32,6 +32,8 @@
 
 package nats
 
+import "github.com/nats-io/nats.go"
+
 func (c *Connection) NewJsProducerSingleWorker(
 	streamName string,
 	subjects []string,
@@ -39,7 +41,12 @@ func (c *Connection) NewJsProducerSingleWorker(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	producer := NewJsProducerSingleWorkerService(c.logger, c.originConn,
+	jsNatsCtx, err := c.originConn.JetStream()
+	if err != nil {
+		return nil
+	}
+
+	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, jsNatsCtx,
 		streamName, subjects)
 
 	c.producers = append(c.producers, producer)
@@ -56,8 +63,24 @@ func (c *Connection) NewJsProducerWorkersPool(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	producer := NewJsProducerWorkersPool(c.logger, c.originConn, workersCount,
-		streamName, subjects)
+	jsCtx, err := c.originConn.JetStream()
+	if err != nil {
+		return nil
+	}
+
+	msgChannel := make(chan *nats.Msg, workersCount)
+	workers := make([]*jsProducerWorkerWrapper, workersCount)
+
+	for i := uint32(0); i < workersCount; i++ {
+		ww := newJsProducerWorker(c.stdLoggerFactory, jsCtx, i,
+			msgChannel, streamName,
+			subjects)
+
+		workers = append(workers, ww)
+	}
+
+	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.originConn, jsCtx,
+		msgChannel, workers)
 
 	c.producers = append(c.producers, producer)
 	c.producersCounter++
@@ -66,14 +89,25 @@ func (c *Connection) NewJsProducerWorkersPool(
 }
 
 func (c *Connection) NewSimpleProducerWorkersPool(
-	workersCount uint16,
+	workersCount uint32,
 	subjectName string,
-	groupName string,
 ) *simpleProducerWorkerPool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	producer := NewSimpleProducerWorkersPool(c.logger, c.originConn, workersCount, subjectName, groupName)
+	msgChannel := make(chan *nats.Msg, workersCount)
+	workers := make([]*producerWorkerWrapper, workersCount)
+
+	for i := uint32(0); i < workersCount; i++ {
+		ww := newProducerWorker(c.stdLoggerFactory, i,
+			msgChannel, subjectName,
+			c.originConn)
+
+		workers = append(workers, ww)
+	}
+
+	producer := NewSimpleProducerWorkersPool(c.stdLoggerFactory, c.originConn, msgChannel,
+		workers)
 
 	c.producers = append(c.producers, producer)
 	c.producersCounter++

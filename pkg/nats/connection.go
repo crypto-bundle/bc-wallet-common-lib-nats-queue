@@ -212,7 +212,7 @@ func NewConnection(ctx context.Context,
 
 	conn := &Connection{
 		stdLoggerFactory: loggerFactorySvc,
-		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsConnectionUnitNameTag,
 		}),
 		originConn: nil, // will be settled @ Connect receiver-function call

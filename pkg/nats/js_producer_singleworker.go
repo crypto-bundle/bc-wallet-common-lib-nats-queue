@@ -49,7 +49,7 @@ type jsProducerSingleWorker struct {
 	jsCtx            nats.JetStreamContext
 }
 
-func (sw *jsProducerSingleWorker) OnClosed(conn *nats.Conn) error {
+func (sw *jsProducerSingleWorker) OnClosed(_ *nats.Conn) error {
 	sw.natsProducerConn = nil
 	sw.jsCtx = nil
 
@@ -75,7 +75,7 @@ func (sw *jsProducerSingleWorker) OnDisconnect(conn *nats.Conn, err error) error
 
 func (sw *jsProducerSingleWorker) Healthcheck(ctx context.Context) bool {
 	if !sw.natsProducerConn.IsConnected() {
-		sw.logger.Print("subscription: lost NATS origin connection")
+		sw.logger.Print("lost NATS origin connection")
 
 		return false
 	}
@@ -101,14 +101,14 @@ func (sw *jsProducerSingleWorker) Run(ctx context.Context) error {
 func (sw *jsProducerSingleWorker) Produce(ctx context.Context, msg *nats.Msg) {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Printf("producer: unable to produce nats message - %e", err)
+		sw.logger.Printf("error: unable to produce nats message - %e", err)
 	}
 }
 
 func (sw *jsProducerSingleWorker) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Printf("producer: unable to produce nats message - %e", err)
+		sw.logger.Printf("error: unable to produce nats message - %e", err)
 
 		return err
 	}
@@ -116,14 +116,14 @@ func (sw *jsProducerSingleWorker) ProduceSync(ctx context.Context, msg *nats.Msg
 	return nil
 }
 
-func (sw *jsProducerSingleWorker) produce(ctx context.Context, msg *nats.Msg) error {
+func (sw *jsProducerSingleWorker) produce(_ context.Context, msg *nats.Msg) error {
 	pubAck, err := sw.jsCtx.PublishMsg(msg)
 	if err != nil {
 		return err
 	}
 
 	if pubAck == nil {
-		sw.logger.Printf("producer: %s - %e",
+		sw.logger.Printf("error: %s - %e",
 			"received nil pubAck", ErrNilPubAck)
 
 		return ErrNilPubAck
@@ -134,19 +134,19 @@ func (sw *jsProducerSingleWorker) produce(ctx context.Context, msg *nats.Msg) er
 
 func NewJsProducerSingleWorkerService(loggerFactorySvc loggerService,
 	natsProducerConn *nats.Conn,
+	jsProducerCtx nats.JetStreamContext,
 	streamName string,
 	subjects []string,
 ) *jsProducerSingleWorker {
 	workersPool := &jsProducerSingleWorker{
-		logger: loggerFactorySvc.WithFields("nats",
+		logger: loggerFactorySvc.WithFields(
 			map[string]interface{}{
 				natsFunctionalUnitTag: natsJetStreamProducerUnitNameTag,
 			}),
-		streamName: streamName,
-		subjects:   subjects,
-
+		streamName:       streamName,
+		subjects:         subjects,
 		natsProducerConn: natsProducerConn,
-		jsCtx:            nil, // will be filed @ init stage
+		jsCtx:            jsProducerCtx, // will be filed @ init stage
 	}
 
 	return workersPool

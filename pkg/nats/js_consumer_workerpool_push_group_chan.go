@@ -135,7 +135,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 ) *jsPushTypeQueueGroupChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc.WithFields("nats",
+	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc.WithFields(
 		map[string]interface{}{
 			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
@@ -143,7 +143,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 
 	workersPool := &jsPushTypeQueueGroupChannelConsumerWorkerPool{
 		handler: handler,
-		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
 			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 		}),
@@ -157,7 +157,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 		ww := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+			logger: loggerFactorySvc.WithFields(map[string]interface{}{
 				natsFunctionalUnitTag: natsWorkerNameTag,
 				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 				workerUnitNumberTag:   i,

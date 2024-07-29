@@ -120,7 +120,7 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 
 	ww := &jsConsumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
-		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
 		}),
 		handler:           handler,
@@ -128,7 +128,7 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc.WithFields("nats",
+	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc.WithFields(
 		map[string]interface{}{
 			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
@@ -138,7 +138,7 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 	return &jsPullTypeHandlerConsumer{
 		pullSubscriber: pullSubscriber,
 		worker:         ww,
-		logger: loggerFactorySvc.WithFields("nats", map[string]interface{}{
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsWorkerNameTag,
 			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
 		}),

@@ -100,22 +100,7 @@ func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
-	jsNatsCtx, err := wp.natsConn.JetStream()
-	if err != nil {
-		return err
-	}
-
-	wp.jsNatsCtx = jsNatsCtx
-
-	for i := uint32(0); i < wp.workersCount; i++ {
-		ww := newJsProducerWorker(wp.logger, wp.jsNatsCtx, i,
-			wp.msgChannel, wp.streamName,
-			wp.subjects)
-
-		wp.workers = append(wp.workers, ww)
-	}
-
+func (wp *jsProducerWorkerPool) Init(_ context.Context) error {
 	return nil
 }
 
@@ -136,22 +121,24 @@ func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) 
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewJsProducerWorkersPool(logger *log.Logger,
+func NewJsProducerWorkersPool(loggerFactorySvc loggerService,
 	natsProducerConn *nats.Conn,
-	workersCount uint32,
-	streamName string,
-	subjects []string,
+	natsJsCtx nats.JetStreamContext,
+	msgChannel chan *nats.Msg,
+	workers []*jsProducerWorkerWrapper,
 ) *jsProducerWorkerPool {
 	workersPool := &jsProducerWorkerPool{
-		logger:     logger,
-		msgChannel: make(chan *nats.Msg, workersCount),
-		streamName: streamName,
-		subjects:   subjects,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsProducerWorkerPoolUnitNameTag,
+			}),
+		msgChannel: msgChannel,
 
 		natsConn:  natsProducerConn,
-		jsNatsCtx: nil, // will be filed @ init stage
+		jsNatsCtx: natsJsCtx,
 
-		workersCount: workersCount,
+		workers:      workers,
+		workersCount: uint32(len(workers)),
 		rr:           1, // round-robin index
 	}
 

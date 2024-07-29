@@ -46,9 +46,6 @@ type simpleProducerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 
-	subjectName string
-	groupName   string
-
 	natsProducerConn *nats.Conn
 	workers          []*producerWorkerWrapper
 
@@ -122,32 +119,23 @@ func (wp *simpleProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.M
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewSimpleProducerWorkersPool(logger *log.Logger,
+func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
 	natsProducerConn *nats.Conn,
-	workersCount uint16,
-	subjectName string,
-	groupName string,
+	msgChannel chan *nats.Msg,
+	workers []*producerWorkerWrapper,
 ) *simpleProducerWorkerPool {
-	msgChannel := make(chan *nats.Msg, workersCount)
+	logger := loggerFactorySvc.WithFields(map[string]interface{}{
+		natsFunctionalUnitTag: natsProducerWorkerPoolUnitNameTag,
+	})
 
 	workersPool := &simpleProducerWorkerPool{
 		logger: logger,
 
-		subjectName: subjectName,
-		groupName:   groupName,
-
 		msgChannel:       msgChannel,
 		natsProducerConn: natsProducerConn,
-		workers:          make([]*producerWorkerWrapper, workersCount),
-		workersCount:     uint32(workersCount),
+		workers:          workers,
+		workersCount:     uint32(len(workers)),
 		rr:               1, // round-robin index
-	}
-
-	for i := uint16(0); i < workersCount; i++ {
-		ww := newProducerWorker(logger, i, msgChannel, subjectName,
-			natsProducerConn)
-
-		workersPool.workers[i] = ww
 	}
 
 	return workersPool

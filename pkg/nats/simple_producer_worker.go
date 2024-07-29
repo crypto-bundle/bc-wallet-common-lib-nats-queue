@@ -46,7 +46,7 @@ type producerWorkerWrapper struct {
 	msgChannel       <-chan *nats.Msg
 
 	subject string
-	num     uint16
+	num     uint32
 }
 
 func (ww *producerWorkerWrapper) Run(ctx context.Context) {
@@ -64,6 +64,16 @@ func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (ww *producerWorkerWrapper) OnReconnect(conn *nats.Conn) error {
+	ww.natsProducerConn = conn
+
+	return nil
+}
+
+func (ww *producerWorkerWrapper) OnDisconnect(conn *nats.Conn, err error) error {
+	return nil
 }
 
 func (ww *producerWorkerWrapper) OnClosed(conn *nats.Conn) error {
@@ -85,12 +95,16 @@ func (ww *producerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func newProducerWorker(logger *log.Logger,
-	workerNum uint16,
+func newProducerWorker(loggerFactorySvc loggerService,
+	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	subject string,
 	natsProducerConn *nats.Conn,
 ) *producerWorkerWrapper {
+	logger := loggerFactorySvc.WithFields(map[string]interface{}{
+		natsFunctionalUnitTag: natsSimpleProducerWorkerUnitNameTag,
+	})
+
 	return &producerWorkerWrapper{
 		logger:           logger,
 		msgChannel:       msgChannel,

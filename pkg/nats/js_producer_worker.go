@@ -111,7 +111,7 @@ func newJsProducerWorker(loggerFactorySvc loggerService,
 	subjects []string,
 ) *jsProducerWorkerWrapper {
 	return &jsProducerWorkerWrapper{
-		logger: loggerFactorySvc.WithFields("nats",
+		logger: loggerFactorySvc.WithFields(
 			map[string]interface{}{
 				natsFunctionalUnitTag: natsJetStreamProducerUnitNameTag,
 			}),
