@@ -167,10 +167,10 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			s.logger.Printf("subscription: unable fetch data - %e", fetchErr)
+			s.logger.Printf("unable fetch data - %e", fetchErr)
 
 		case <-ctx.Done():
-			s.logger.Print("subscription: received close message")
+			s.logger.Print("received close message")
 
 			return
 		}
@@ -193,7 +193,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
+			s.logger.Printf("unable to re-subscribe - %s: %d, error: %e",
 				ResubscribeTag, i, subsErr)
 
 			err = subsErr
@@ -204,7 +204,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("subscription: re-subscription success")
+		s.logger.Print("re-subscription success")
 
 		return nil
 	}

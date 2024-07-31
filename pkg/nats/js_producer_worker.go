@@ -73,12 +73,12 @@ func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Printf("producer worker: %s - %e",
+				ww.logger.Printf("error: %s - %e",
 					"unable to send message to broker service", err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Print("producer worker: received close worker message")
+			ww.logger.Print("received close worker message")
 			return
 		}
 	}
@@ -95,7 +95,7 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	}
 
 	if pubAck == nil {
-		ww.logger.Printf("producer worker: %s - %e",
+		ww.logger.Printf("error: %s - %e",
 			"received nil pubAck", ErrNilPubAck)
 		return ErrNilPubAck
 	}

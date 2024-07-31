@@ -167,10 +167,10 @@ func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			s.logger.Printf("subscription: unable fetch data - %e", fetchErr)
+			s.logger.Printf("unable fetch data - %e", fetchErr)
 
 		case <-ctx.Done():
-			s.logger.Print("subscription: received close message")
+			s.logger.Print("received close message")
 
 			return
 		}

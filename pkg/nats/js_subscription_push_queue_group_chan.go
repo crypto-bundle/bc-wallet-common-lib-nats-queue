@@ -151,8 +151,8 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
-				ResubscribeTag, i, subsErr)
+			s.logger.Printf("error: unable to re-subscribe - %e, %s: %d",
+				subsErr, ResubscribeTag, i)
 
 			err = subsErr
 
@@ -162,7 +162,7 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("subscription: re-subscription success")
+		s.logger.Print("re-subscription success")
 
 		return nil
 	}

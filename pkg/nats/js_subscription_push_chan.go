@@ -89,13 +89,13 @@ func (s *jsPushSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 
 func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("subscription: lost NATS origin connection")
+		s.logger.Print("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("subscription: lost NATS subscription")
+		s.logger.Print("lost NATS subscription")
 
 		return false
 	}
@@ -144,7 +144,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
+			s.logger.Printf("unable to re-subscribe - %s: %d, error: %e",
 				ResubscribeTag, i, subsErr)
 
 			err = subsErr
@@ -155,7 +155,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("subscription: re-subscription success")
+		s.logger.Print("re-subscription success")
 
 		return nil
 	}
