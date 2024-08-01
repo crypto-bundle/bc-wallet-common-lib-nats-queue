@@ -148,7 +148,7 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
 			s.handler, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe - %e, %s: %d",
+			s.logger.Printf("error: unable to re-subscribe - %e. %s: %d",
 				subsErr, ResubscribeTag, i)
 
 			err = subsErr

@@ -144,8 +144,8 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("unable to re-subscribe - %s: %d, error: %e",
-				ResubscribeTag, i, subsErr)
+			s.logger.Printf("error: unable to re-subscribe - %e. %s: %d",
+				subsErr, ResubscribeTag, i)
 
 			err = subsErr
 

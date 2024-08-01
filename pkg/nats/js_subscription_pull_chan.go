@@ -98,13 +98,13 @@ func (s *jsPullChanSubscription) OnDisconnect(conn *nats.Conn, err error) error 
 
 func (s *jsPullChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("subscription: lost NATS origin connection")
+		s.logger.Print("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("subscription: lost NATS subscription")
+		s.logger.Print("lost NATS subscription")
 
 		return false
 	}
@@ -193,7 +193,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("unable to re-subscribe - %s: %d, error: %e",
+			s.logger.Printf("error: unable to re-subscribe - %s: %d, %e",
 				ResubscribeTag, i, subsErr)
 
 			err = subsErr
