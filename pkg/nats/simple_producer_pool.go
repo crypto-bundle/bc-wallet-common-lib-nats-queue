@@ -59,7 +59,7 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("producer pool: unable to call onClosed in simple producer pool unit - %e",
+			wp.logger.Printf("unable to call onClosed in simple producer pool unit - %e",
 				loopErr)
 
 			err = loopErr

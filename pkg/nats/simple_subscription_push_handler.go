@@ -80,13 +80,13 @@ func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) er
 
 func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("subscription: lost NATS origin connection")
+		s.logger.Print("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("subscription: lost NATS subscription")
+		s.logger.Print("lost NATS subscription")
 
 		return false
 	}
@@ -128,8 +128,8 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
-			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
-				ResubscribeTag, i, subsErr)
+			s.logger.Printf("error: unable to re-subscribe  %e. %s: %d",
+				subsErr, ResubscribeTag, i)
 
 			err = subsErr
 

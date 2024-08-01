@@ -64,12 +64,12 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			ww.logger.Print("consumer worker: received close worker message")
+			ww.logger.Print("received close worker message")
 			return
 
 		case v, ok := <-ww.msgChannel:
 			if !ok {
-				ww.logger.Print("consumer worker: nats message channel is closed")
+				ww.logger.Print("nats message channel is closed")
 				return
 			}
 
@@ -85,13 +85,13 @@ func (ww *jsConsumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
 func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 	msgMetaData, err := msg.Metadata()
 	if err != nil {
-		ww.logger.Printf("consumer: %s: %s, error: %e",
-			SubjectTag, msg.Subject, err)
+		ww.logger.Printf("error: unable to read metadata - %e. %s: %s, ",
+			err, SubjectTag, msg.Subject)
 	}
 
 	decisionDirective, err := ww.handler.Process(context.Background(), msg)
 	if err != nil {
-		ww.logger.Printf("consumer: proccess message ended with error - %e. decision directive - %s",
+		ww.logger.Printf("error: proccess message ended with error - %e. decision directive - %s",
 			err, decisionDirective)
 	}
 
@@ -99,7 +99,7 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
-			ww.logger.Printf("consumer worker: unable to ACK message - error: %e", arrErr)
+			ww.logger.Printf("error: unable to ACK message - %e", arrErr)
 		}
 
 	case decisionDirective == DirectiveForReQueue:
@@ -112,13 +112,13 @@ func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
 
 		nakErr := msg.NakWithDelay(delay)
 		if nakErr != nil {
-			ww.logger.Printf("consumer worker: unable to RE-QUEUE message - error: %e", nakErr)
+			ww.logger.Printf("error: unable to RE-QUEUE message - %e", nakErr)
 		}
 
 	case decisionDirective == DirectiveForReject:
 		termErr := msg.Term()
 		if termErr != nil {
-			ww.logger.Printf("consumer worker: unable to REJECTION-ACK message - error: %e", err)
+			ww.logger.Printf("error: unable to REJECTION-ACK message - %e", err)
 		}
 	}
 }

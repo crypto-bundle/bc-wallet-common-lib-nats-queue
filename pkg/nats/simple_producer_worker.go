@@ -55,12 +55,12 @@ func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Printf("producer pool: send message to broker service failed - %e",
+				ww.logger.Printf("error: send message to broker service failed - %e",
 					err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Printf("producer worker: received close worker message")
+			ww.logger.Printf("received close worker message")
 			return
 		}
 	}

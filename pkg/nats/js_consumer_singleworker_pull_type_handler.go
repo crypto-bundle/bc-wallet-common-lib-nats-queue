@@ -53,7 +53,7 @@ func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
 
 	err = wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("consumer: unable to call onClosed in pull-type subscription service - %e", err)
+		wp.logger.Printf("error: unable to call onClosed callbac - %e", err)
 	}
 
 	wp.pullSubscriber = nil
@@ -103,7 +103,7 @@ func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 
 		err = wp.pullSubscriber.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
+			wp.logger.Printf("error: unable to unSubscribe - %e", err)
 		}
 	}()
 

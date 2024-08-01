@@ -103,7 +103,7 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.subscriptionSrv.Subscribe(ctx)
 	if err != nil {
-		wp.logger.Printf("consumer: unable to subscribe - %e", err)
+		wp.logger.Printf("error: unable to subscribe - %e", err)
 	}
 
 	go func() {
@@ -112,11 +112,11 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 		err = wp.subscriptionSrv.UnSubscribe()
 		if err != nil {
 			if err != nil {
-				wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
+				wp.logger.Printf("error: unable to unSubscribe - %e", err)
 			}
 		}
 
-		wp.logger.Printf("consumer: successfully unSubscribed")
+		wp.logger.Printf("successfully unSubscribed")
 	}()
 
 	return nil

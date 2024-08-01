@@ -117,10 +117,10 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("consumer: unable to unSubscribe - %e", err)
+			wp.logger.Printf("unable to unSubscribe - %e", err)
 		}
 
-		wp.logger.Printf("consumer: successfully unSubscribed")
+		wp.logger.Printf("successfully unSubscribed")
 
 		return
 	}()
