@@ -60,7 +60,8 @@ func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("producer pool: unable to call onClosed in producer worker pool unit - %e", loopErr)
+			wp.logger.Printf("error: unable to call onClosed callback in producer worker pool unit - %e",
+				loopErr)
 
 			return loopErr
 		}
@@ -93,7 +94,7 @@ func (wp *jsProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 
 func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	if !wp.natsConn.IsConnected() {
-		wp.logger.Print("producer pool: lost NATS origin connection")
+		wp.logger.Print("lost NATS origin connection")
 
 		return false
 	}

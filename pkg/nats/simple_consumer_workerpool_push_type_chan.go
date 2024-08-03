@@ -122,7 +122,7 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewSimpleConsumerWorkersPool(logger *log.Logger,
+func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,

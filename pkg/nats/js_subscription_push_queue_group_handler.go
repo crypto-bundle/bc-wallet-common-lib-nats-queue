@@ -171,7 +171,7 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPushQueueGroupHandlerSubscription(logger *log.Logger,
+func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 
@@ -201,6 +201,10 @@ func newJsPushQueueGroupHandlerSubscription(logger *log.Logger,
 		subscribeNatsOptions:   subOptions,
 
 		handler: handler,
-		logger:  logger,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+			}),
 	}
 }

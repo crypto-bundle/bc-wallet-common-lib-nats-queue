@@ -86,19 +86,19 @@ func (ww *consumerWorkerWrapper) processMsg(msg *nats.Msg) {
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
-			ww.logger.Printf("unable to ACK message - %e", arrErr)
+			ww.logger.Printf("error: unable to ACK message - %e", arrErr)
 		}
 
 	case decisionDirective == DirectiveForReQueue:
 		nakErr := msg.Nak()
 		if nakErr != nil {
-			ww.logger.Printf("unable to RE-QUEUE message - %e", nakErr)
+			ww.logger.Printf("error: unable to RE-QUEUE message - %e", nakErr)
 		}
 
 	case decisionDirective == DirectiveForReject:
 		termErr := msg.Term()
 		if termErr != nil {
-			ww.logger.Printf("unable to REJECTION-ACK message - %e", termErr)
+			ww.logger.Printf("error: unable to REJECTION-ACK message - %e", termErr)
 		}
 	}
 }

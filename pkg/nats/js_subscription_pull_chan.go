@@ -216,7 +216,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPullChanSubscriptionService(logger *log.Logger,
+func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	msgChannel chan *nats.Msg,
@@ -250,6 +250,10 @@ func newJsPullChanSubscriptionService(logger *log.Logger,
 
 		msgChannel: msgChannel,
 
-		logger: logger,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
+			}),
 	}
 }

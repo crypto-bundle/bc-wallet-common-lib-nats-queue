@@ -167,7 +167,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPushSubscriptionService(logger *log.Logger,
+func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 
 	consumerCfg consumerConfig,
@@ -196,6 +196,10 @@ func newJsPushSubscriptionService(logger *log.Logger,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger:     logger,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
+				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
+			}),
 	}
 }
