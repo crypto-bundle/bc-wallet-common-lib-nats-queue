@@ -151,7 +151,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushSubscriptionService(logger *log.Logger,
+func newSimplePushSubscriptionService(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
 	handler func(msg *nats.Msg),
@@ -168,6 +168,10 @@ func newSimplePushSubscriptionService(logger *log.Logger,
 
 		handler: handler,
 
-		logger: logger,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsSimpleSubscriptionUnitNameTag,
+				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
+			}),
 	}
 }

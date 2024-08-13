@@ -118,14 +118,14 @@ func (c *Connection) GetConnection() *nats.Conn {
 func (c *Connection) Close() error {
 	c.originConn.Close()
 
-	c.logger.Print("connection: nats connection successfully closed")
+	c.logger.Print("nats connection successfully closed")
 
 	return nil
 }
 
 func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	c.logger.Printf("%s - %e",
-		"connection: received on DisconnectErr event - calling OnDisconnect on all consumers/producers", err)
+		"received on DisconnectErr event - calling OnDisconnect on all consumers/producers", err)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -134,7 +134,7 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 		producerErr := c.producers[i].OnDisconnect(conn, err)
 		if producerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onDisconnect on producer", ProducerIndex, i, err)
+				"unable to call onDisconnect on producer", ProducerIndex, i, err)
 		}
 	}
 
@@ -142,13 +142,13 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onDisconnect on consumer", ConsumerIndex, i, err)
+				"unable to call onDisconnect on consumer", ConsumerIndex, i, err)
 		}
 	}
 }
 
 func (c *Connection) onClosed(newConn *nats.Conn) {
-	c.logger.Print("connection: received onClosed event - calling OnClosed on all consumers/producers")
+	c.logger.Print("received onClosed event - calling OnClosed on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -157,7 +157,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 		producerErr := c.producers[i].OnClosed(newConn)
 		if producerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onClosed on producer", ProducerIndex, i, producerErr)
+				"unable to call onClosed on producer", ProducerIndex, i, producerErr)
 		}
 	}
 
@@ -165,7 +165,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 		consumerErr := c.consumers[i].OnClosed(newConn)
 		if consumerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onClosed on consumer", ConsumerIndex, i, consumerErr)
+				"unable to call onClosed on consumer", ConsumerIndex, i, consumerErr)
 		}
 	}
 }
@@ -173,7 +173,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 func (c *Connection) onReconnect(newConn *nats.Conn) {
 	c.originConn = newConn
 
-	c.logger.Print("connection: received on OnReconnect event - calling OnReconnect on all consumers/producers")
+	c.logger.Print("received on OnReconnect event - calling OnReconnect on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -182,7 +182,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 		producerErr := c.producers[i].OnReconnect(newConn)
 		if producerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onReconnect on producer", ProducerIndex, i, producerErr)
+				"unable to call onReconnect on producer", ProducerIndex, i, producerErr)
 		}
 	}
 
@@ -190,7 +190,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 		consumerErr := c.consumers[i].OnReconnect(newConn)
 		if consumerErr != nil {
 			c.logger.Printf("%s [%s: %d] - %e",
-				"connection: unable to call onReconnect on consumer", ConsumerIndex, i, consumerErr)
+				"unable to call onReconnect on consumer", ConsumerIndex, i, consumerErr)
 		}
 	}
 }

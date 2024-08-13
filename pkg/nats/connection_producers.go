@@ -46,7 +46,7 @@ func (c *Connection) NewJsProducerSingleWorker(
 		return nil
 	}
 
-	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, jsNatsCtx,
+	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, c.originConn, jsNatsCtx,
 		streamName, subjects)
 
 	c.producers = append(c.producers, producer)

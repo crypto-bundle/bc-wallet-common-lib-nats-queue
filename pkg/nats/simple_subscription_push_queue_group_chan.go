@@ -152,7 +152,7 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushQueueGroupSubscriptionService(logger *log.Logger,
+func newSimplePushQueueGroupSubscriptionService(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
@@ -169,6 +169,10 @@ func newSimplePushQueueGroupSubscriptionService(logger *log.Logger,
 		autoReSubscribeTimeout: consumerCfg.GetAutoResubscribeDelay(),
 
 		msgChannel: msgChannel,
-		logger:     logger,
+		logger: loggerFactorySvc.WithFields(
+			map[string]interface{}{
+				natsFunctionalUnitTag: natsSimpleSubscriptionUnitNameTag,
+				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+			}),
 	}
 }

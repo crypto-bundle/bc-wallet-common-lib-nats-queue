@@ -102,7 +102,7 @@ func (wp *simpleProducerWorkerPool) run(ctx context.Context) {
 
 func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	if !wp.natsProducerConn.IsConnected() {
-		wp.logger.Print("producer: lost NATS origin connection")
+		wp.logger.Print("lost NATS origin connection")
 
 		return false
 	}

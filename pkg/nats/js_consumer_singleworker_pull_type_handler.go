@@ -128,11 +128,7 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc.WithFields(
-		map[string]interface{}{
-			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
-		}), jsNatsConn,
+	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc, jsNatsConn,
 		consumerCfg, ww.ProcessMsg)
 
 	return &jsPullTypeHandlerConsumer{

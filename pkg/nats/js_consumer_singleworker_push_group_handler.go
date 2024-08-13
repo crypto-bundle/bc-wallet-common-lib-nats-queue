@@ -125,11 +125,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(loggerFactorySvc.WithFields(
-		map[string]interface{}{
-			natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-		}), natsConn, consumerCfg, ww.ProcessMsg)
+	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(loggerFactorySvc, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{

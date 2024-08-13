@@ -88,22 +88,27 @@ func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-func NewSimpleConsumerSingeWorker(logger *log.Logger,
+func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsConsumerPushQueueGroupSingeWorker {
 	ww := &jsConsumerWorkerWrapper{
-		msgChannel:   nil, // cuz channel-less single-worker worker pool
-		logger:       logger,
+		msgChannel: nil, // cuz channel-less single-worker worker pool
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
+			natsFunctionalUnitTag: natsSimpleConsumerWorkerUnitNameTag,
+		}),
 		handler:      handler,
 		reQueueDelay: consumerCfg.GetNakDelayTimings(),
 	}
 
-	subscriptionSrv := newSimplePushSubscriptionService(logger, natsConn, consumerCfg, ww.ProcessMsg)
+	subscriptionSrv := newSimplePushSubscriptionService(loggerFactorySvc, natsConn, consumerCfg, ww.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger:          logger,
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
+			natsFunctionalUnitTag: natsWorkerNameTag,
+			natsConsumerTypeTag:   natsSimpleConsumerWorkerUnitNameTag,
+		}),
 		subscriptionSvc: subscriptionSrv,
 		worker:          ww,
 	}

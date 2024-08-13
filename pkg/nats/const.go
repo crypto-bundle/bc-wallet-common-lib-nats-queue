@@ -48,9 +48,11 @@ const (
 	natsJetStreamConsumerUnitNameTag     = "js_consumer"
 	natsJetStreamProducerUnitNameTag     = "js_producer"
 	natsJetStreamSubscriptionUnitNameTag = "js_subscription"
+	natsSimpleSubscriptionUnitNameTag    = "simple_subscription"
 	natsConsumerWorkerPoolUnitNameTag    = "consumer_worker_pool"
 	natsProducerWorkerPoolUnitNameTag    = "producer_worker_pool"
 	natsWorkerNameTag                    = "js_worker"
+	natsSimpleConsumerWorkerUnitNameTag  = "simple_consumer_worker"
 	natsSimpleProducerWorkerUnitNameTag  = "simple_producer_worker"
 
 	natsPushTypeQueueGroupConsumerNameTag = "push_type_queue_group"

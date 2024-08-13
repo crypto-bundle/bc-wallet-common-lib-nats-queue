@@ -129,12 +129,15 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 ) *simpleConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(logger, natsConn,
+	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(loggerFactorySvc, natsConn,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
 		handler: handler,
-		logger:  logger,
+		logger: loggerFactorySvc.WithFields(map[string]interface{}{
+			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
+			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+		}),
 
 		subscriptionSrv: subscriptionSrv,
 
@@ -145,7 +148,11 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 		ww := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger:     logger,
+			logger: loggerFactorySvc.WithFields(map[string]interface{}{
+				natsFunctionalUnitTag: natsWorkerNameTag,
+				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
+				workerUnitNumberTag:   i,
+			}),
 		}
 
 		workersPool.workers = append(workersPool.workers, ww)

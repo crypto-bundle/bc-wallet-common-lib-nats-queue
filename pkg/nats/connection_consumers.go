@@ -32,8 +32,6 @@
 
 package nats
 
-import "github.com/nats-io/nats.go"
-
 func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
@@ -41,33 +39,13 @@ func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	requeueDelays := consumerCfg.GetNakDelayTimings()
+	worker := NewJsConsumerPushQueueGroupSingeWorker(c.stdLoggerFactory, c.originConn,
+		consumerCfg, handler)
 
-	ww := &jsConsumerWorkerWrapper{
-		msgChannel: nil, // cuz channel-less single-worker worker pool
-		logger: c.stdLoggerFactory.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
-		}),
-		handler:           handler,
-		reQueueDelay:      requeueDelays,
-		reQueueDelayCount: uint64(len(requeueDelays) - 1),
-	}
-
-	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(c.stdLoggerFactory, c.originConn, consumerCfg, ww.ProcessMsg)
-
-	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger: c.stdLoggerFactory.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsWorkerNameTag,
-			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-		}),
-		subscriptionSvc: subscriptionSvc,
-		worker:          ww,
-	}
-
-	c.consumers = append(c.consumers, workersPool)
+	c.consumers = append(c.consumers, worker)
 	c.consumerCounter++
 
-	return workersPool
+	return worker
 }
 
 func (c *Connection) NewJsPullTypeConsumerWorkersPool(consumerCfg consumerConfigPullType,
@@ -76,38 +54,8 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(consumerCfg consumerConfig
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
-
-	pullSubscriber := newJsPullChanSubscriptionService(c.stdLoggerFactory, c.originConn, consumerCfg, msgChannel)
-
-	workersPool := &jsPullTypeChannelConsumerWorkerPool{
-		handler: handler,
-		logger: c.stdLoggerFactory.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
-			natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-		}),
-		msgChannel:     msgChannel,
-		subjectName:    consumerCfg.GetSubjectName(),
-		pullSubscriber: pullSubscriber,
-	}
-
-	requeueDelays := consumerCfg.GetNakDelayTimings()
-
-	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
-		ww := &jsConsumerWorkerWrapper{
-			msgChannel: msgChannel,
-			handler:    workersPool.handler,
-			logger: c.stdLoggerFactory.WithFields(map[string]interface{}{
-				natsFunctionalUnitTag: natsWorkerNameTag,
-				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-				workerUnitNumberTag:   i,
-			}),
-			reQueueDelay:      requeueDelays,
-			reQueueDelayCount: uint64(len(requeueDelays) - 1),
-		}
-
-		workersPool.workers = append(workersPool.workers, ww)
-	}
+	workersPool := NewJsPullTypeConsumerWorkersPool(c.stdLoggerFactory, c.originConn,
+		consumerCfg, handler)
 
 	c.consumers = append(c.consumers, workersPool)
 	c.consumerCounter++
@@ -166,7 +114,7 @@ func (c *Connection) NewSimpleConsumerWorkersPool(consumerCfg consumerConfigQueu
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerWorkersPool(c.logger, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++
@@ -180,7 +128,7 @@ func (c *Connection) NewSimpleConsumerSingleWorker(consumerCfg consumerConfigQue
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerWorkersPool(c.logger, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++
