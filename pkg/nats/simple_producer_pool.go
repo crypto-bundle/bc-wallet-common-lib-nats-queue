@@ -64,6 +64,7 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 			err = loopErr
 		}
+
 		wp.workers[i] = nil
 	}
 

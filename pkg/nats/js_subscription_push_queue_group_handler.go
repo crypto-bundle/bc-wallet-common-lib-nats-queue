@@ -154,6 +154,7 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 
@@ -189,8 +190,9 @@ func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
 	}
 
 	return &jsPushQueueGroupHandlerSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ Subscribe stage
+		natsConn:  natsConn,
+		natsSubs:  nil, // it will be set @ Subscribe stage
+		jsNatsCtx: nil, // it will be set @ init stage
 
 		subjectName:    consumerCfg.GetSubjectName(),
 		queueGroupName: consumerCfg.GetQueueGroupName(),

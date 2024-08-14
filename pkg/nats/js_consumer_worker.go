@@ -48,9 +48,8 @@ type jsConsumerWorkerWrapper struct {
 
 	logger *log.Logger
 
-	maxRedeliveryCount uint64
-	reQueueDelayCount  uint64
-	reQueueDelay       []time.Duration
+	reQueueDelayCount uint64
+	reQueueDelay      []time.Duration
 }
 
 func (ww *jsConsumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
@@ -65,11 +64,13 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			ww.logger.Print("received close worker message")
+
 			return
 
 		case v, ok := <-ww.msgChannel:
 			if !ok {
 				ww.logger.Print("nats message channel is closed")
+
 				return
 			}
 

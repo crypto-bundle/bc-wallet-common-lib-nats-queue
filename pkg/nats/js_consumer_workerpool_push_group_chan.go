@@ -58,9 +58,8 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) OnClosed(conn *nats.Con
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
 			wp.logger.Printf("error: unable to call onClosed in consumer worker pool unit - %e", loopErr)
-
-			err = loopErr
 		}
+
 		wp.workers[i] = nil
 	}
 
@@ -121,8 +120,6 @@ func (wp *jsPushTypeQueueGroupChannelConsumerWorkerPool) Run(ctx context.Context
 		}
 
 		wp.logger.Printf("successfully unSubscribed")
-
-		return
 	}()
 
 	return nil
@@ -143,6 +140,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
 			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 		}),
+		workers:         nil,
 		subscriptionSvc: subscriptionSrv,
 		msgChannel:      msgChannel,
 	}

@@ -137,8 +137,6 @@ func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
 }
 
 func (s *jsPushQueueGroupChanSubscription) onDisconnect(conn *nats.Conn, err error) {
-
-	return
 }
 
 func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
@@ -147,6 +145,7 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	var err error = nil
+
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
@@ -157,6 +156,7 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 
@@ -192,8 +192,9 @@ func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
 	}
 
 	return &jsPushQueueGroupChanSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ run stage
+		natsConn:  natsConn,
+		natsSubs:  nil, // it will be set @ run stage
+		jsNatsCtx: nil, // it will be set @ init stage
 
 		subjectName:    consumerCfg.GetSubjectName(),
 		queueGroupName: consumerCfg.GetQueueGroupName(),

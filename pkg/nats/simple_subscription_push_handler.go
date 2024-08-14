@@ -134,6 +134,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 

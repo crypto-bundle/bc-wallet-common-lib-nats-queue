@@ -1,5 +1,8 @@
 default: deploy_nats
 
+lint:
+	golangci-lint run --config .golangci.yml -v ./...
+
 deploy_nats:
 	$(if $(and $(env),$(repository)),,$(error 'env' and/or 'repository' is not defined))
 

@@ -59,10 +59,10 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("consumer: unable to call onClosed callback in consumer worker pool unit - %e", loopErr)
-
-			err = loopErr
+			wp.logger.Printf("error: unable to call onClosed callback in consumer worker pool unit - %e",
+				loopErr)
 		}
+
 		wp.workers[i] = nil
 	}
 

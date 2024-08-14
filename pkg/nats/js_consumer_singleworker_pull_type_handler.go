@@ -39,7 +39,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps a
+// jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps
 type jsPullTypeHandlerConsumer struct {
 	pullSubscriber subscriptionService
 
@@ -49,16 +49,14 @@ type jsPullTypeHandlerConsumer struct {
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
-	var err error
-
-	err = wp.pullSubscriber.OnClosed(conn)
+	err := wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
 		wp.logger.Printf("error: unable to call onClosed callbac - %e", err)
 	}
 
 	wp.pullSubscriber = nil
 
-	return err
+	return nil
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnReconnect(conn *nats.Conn) error {

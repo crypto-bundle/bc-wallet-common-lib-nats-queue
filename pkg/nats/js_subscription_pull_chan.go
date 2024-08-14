@@ -48,7 +48,6 @@ type jsPullChanSubscription struct {
 	jsNatsCtx  nats.JetStreamContext
 
 	subjectName string
-	streamName  string
 	durableName string
 
 	autoReSubscribe      bool
@@ -179,8 +178,6 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 
 func (s *jsPullChanSubscription) onDisconnect(conn *nats.Conn, err error) {
 	s.ticker.Stop()
-
-	return
 }
 
 func (s *jsPullChanSubscription) tryResubscribe() error {
@@ -199,6 +196,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeDelay)
+
 			continue
 		}
 
@@ -233,8 +231,9 @@ func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
 	}
 
 	return &jsPullChanSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ run stage
+		natsConn:  natsConn,
+		natsSubs:  nil, // it will be set @ run stage
+		jsNatsCtx: nil, // it will be set @ init stage
 
 		subjectName: consumerCfg.GetSubjectName(),
 		durableName: consumerCfg.GetDurableName(),
@@ -249,6 +248,8 @@ func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
 		fetchTimeout:  consumerCfg.GetFetchTimeout(),
 
 		msgChannel: msgChannel,
+
+		ticker: nil, // it will be set @ Subscribe stage
 
 		logger: loggerFactorySvc.WithFields(
 			map[string]interface{}{

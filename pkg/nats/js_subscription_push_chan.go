@@ -150,6 +150,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 
@@ -185,8 +186,9 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 	}
 
 	return &jsPushSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ run stage
+		natsConn:  natsConn,
+		natsSubs:  nil, // it will be set @ run stage
+		jsNatsCtx: nil, // it will be set @ init stage
 
 		subjectName: consumerCfg.GetSubjectName(),
 

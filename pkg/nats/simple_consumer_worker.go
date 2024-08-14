@@ -46,8 +46,6 @@ type consumerWorkerWrapper struct {
 	handler consumerHandler
 
 	logger *log.Logger
-
-	maxRedeliveryCount uint64
 }
 
 func (ww *consumerWorkerWrapper) OnClosed(conn *nats.Conn) error {

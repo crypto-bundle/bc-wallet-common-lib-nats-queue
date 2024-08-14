@@ -138,7 +138,7 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
 			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 		}),
-
+		workers:         nil,
 		subscriptionSrv: subscriptionSrv,
 
 		msgChannel: msgChannel,

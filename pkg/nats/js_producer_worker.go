@@ -50,7 +50,6 @@ var (
 type jsProducerWorkerWrapper struct {
 	logger     *log.Logger
 	msgChannel <-chan *nats.Msg
-	jsInfo     *nats.StreamInfo
 
 	streamName string
 	subjects   []string
@@ -62,7 +61,6 @@ type jsProducerWorkerWrapper struct {
 
 func (ww *jsProducerWorkerWrapper) OnClosed(conn *nats.Conn) error {
 	ww.natsProducerConn = nil
-	ww.jsInfo = nil
 
 	return nil
 }
@@ -79,6 +77,7 @@ func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 
 		case <-ctx.Done():
 			ww.logger.Print("received close worker message")
+
 			return
 		}
 	}
@@ -97,6 +96,7 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	if pubAck == nil {
 		ww.logger.Printf("error: %s - %e",
 			"received nil pubAck", ErrNilPubAck)
+
 		return ErrNilPubAck
 	}
 

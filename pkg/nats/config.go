@@ -115,6 +115,7 @@ func (c *NatsConfig) GetWorkersCountPerConsumer() uint16 {
 func (c *NatsConfig) Prepare() error {
 	endpoints := strings.Split(c.NatsAddresses, ",")
 	length := len(endpoints)
+
 	if length < 1 {
 		return nil
 	}

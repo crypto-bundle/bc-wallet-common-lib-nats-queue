@@ -45,8 +45,6 @@ type jsProducerWorkerPool struct {
 	logger *log.Logger
 
 	msgChannel chan *nats.Msg
-	streamName string
-	subjects   []string
 
 	natsConn  *nats.Conn
 	jsNatsCtx nats.JetStreamContext
@@ -65,6 +63,7 @@ func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 			return loopErr
 		}
+
 		wp.workers[i] = nil
 	}
 
@@ -98,6 +97,7 @@ func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 
 		return false
 	}
+
 	return true
 }
 
@@ -119,6 +119,7 @@ func (wp *jsProducerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) {
 
 func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	n := atomic.AddUint32(&wp.rr, 1)
+
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 

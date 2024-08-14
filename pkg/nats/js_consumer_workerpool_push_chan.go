@@ -58,9 +58,8 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
 			wp.logger.Printf("consumer: unable to call onClosed in consumer worker pool unit - %e", loopErr)
-
-			err = loopErr
 		}
+
 		wp.workers[i] = nil
 	}
 
