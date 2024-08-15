@@ -135,6 +135,7 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 

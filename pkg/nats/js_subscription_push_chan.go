@@ -134,20 +134,16 @@ func (s *jsPushSubscription) UnSubscribe() error {
 	return nil
 }
 
-func (s *jsPushSubscription) tryResubscribe() error {
+func (s *jsPushSubscription) tryResubscribe() (err error) {
 	if !s.autoReSubscribe {
 		return nil
 	}
-
-	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.logger.Printf("error: unable to re-subscribe - %e. %s: %d",
 				subsErr, ResubscribeTag, i)
-
-			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
 
@@ -161,11 +157,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func newJsPushSubscriptionService(loggerFactorySvc loggerService,

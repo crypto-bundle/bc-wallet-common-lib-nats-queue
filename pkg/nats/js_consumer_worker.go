@@ -67,14 +67,14 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 
 			return
 
-		case v, ok := <-ww.msgChannel:
+		case natsMsg, ok := <-ww.msgChannel:
 			if !ok {
 				ww.logger.Print("nats message channel is closed")
 
 				return
 			}
 
-			ww.processMsg(v)
+			ww.processMsg(natsMsg)
 		}
 	}
 }

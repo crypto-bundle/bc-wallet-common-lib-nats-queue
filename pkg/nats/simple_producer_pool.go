@@ -117,6 +117,7 @@ func (wp *simpleProducerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) 
 
 func (wp *simpleProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	n := atomic.AddUint32(&wp.rr, 1)
+
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 

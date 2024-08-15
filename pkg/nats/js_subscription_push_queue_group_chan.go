@@ -179,7 +179,6 @@ func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *jsPushQueueGroupChanSubscription {
-
 	subOptions := []nats.SubOpt{
 		nats.AckWait(consumerCfg.GetAckWaitTiming()),
 	}

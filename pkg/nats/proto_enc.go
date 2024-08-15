@@ -51,7 +51,9 @@ type ProtobufEncoder struct {
 }
 
 // Encode ...
-func (pe *ProtobufEncoder) Encode(subject string, v interface{}) ([]byte, error) {
+func (pe *ProtobufEncoder) Encode(_ string, // subject
+	v interface{},
+) ([]byte, error) {
 	protoMsg, ok := v.(proto.Message)
 	if !ok {
 		return nil, ErrUnableToCastProtobufType
@@ -61,7 +63,10 @@ func (pe *ProtobufEncoder) Encode(subject string, v interface{}) ([]byte, error)
 }
 
 // Decode ...
-func (pe *ProtobufEncoder) Decode(subject string, data []byte, vPtr interface{}) (err error) {
+func (pe *ProtobufEncoder) Decode(_ string, // subject
+	data []byte,
+	vPtr interface{},
+) (err error) {
 	protoMsgPtr, ok := vPtr.(proto.Message)
 	if !ok {
 		return ErrUnableToCastProtobufType

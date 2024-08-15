@@ -52,8 +52,6 @@ type Connection struct {
 	stdLoggerFactory loggerService
 	logger           *log.Logger
 
-	user      string
-	password  string
 	addresses []string
 
 	retryTimeOut time.Duration
@@ -211,6 +209,8 @@ func NewConnection(ctx context.Context,
 	nats.RegisterEncoder(PROTOBUF_ENCODER, &ProtobufEncoder{})
 
 	conn := &Connection{
+		mu: sync.Mutex{},
+
 		stdLoggerFactory: loggerFactorySvc,
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsConnectionUnitNameTag,
@@ -219,6 +219,8 @@ func NewConnection(ctx context.Context,
 		options:    options,
 
 		cfg: cfg,
+
+		addresses: cfg.GetNatsAddresses(),
 
 		retryCount:   cfg.GetNatsConnectionRetryCount(),
 		retryTimeOut: cfg.GetNatsConnectionRetryTimeout(),

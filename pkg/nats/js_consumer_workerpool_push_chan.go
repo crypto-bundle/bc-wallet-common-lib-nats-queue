@@ -120,8 +120,6 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 		}
 
 		wp.logger.Printf("successfully unSubscribed")
-
-		return
 	}()
 
 	return nil

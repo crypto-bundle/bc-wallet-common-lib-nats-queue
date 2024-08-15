@@ -60,15 +60,17 @@ func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			ww.logger.Print("received close worker message")
+
 			return
 
-		case v, ok := <-ww.msgChannel:
+		case natsMsg, ok := <-ww.msgChannel:
 			if !ok {
 				ww.logger.Print("nats message channel is closed")
+
 				return
 			}
 
-			ww.processMsg(v)
+			ww.processMsg(natsMsg)
 		}
 	}
 }

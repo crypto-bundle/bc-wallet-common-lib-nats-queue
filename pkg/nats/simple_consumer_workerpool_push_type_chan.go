@@ -145,7 +145,7 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 	}
 
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
-		ww := &consumerWorkerWrapper{
+		workerWrapper := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
 			logger: loggerFactorySvc.WithFields(map[string]interface{}{
@@ -155,7 +155,7 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 			}),
 		}
 
-		workersPool.workers = append(workersPool.workers, ww)
+		workersPool.workers = append(workersPool.workers, workerWrapper)
 	}
 
 	return workersPool
