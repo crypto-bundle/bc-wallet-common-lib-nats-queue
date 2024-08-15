@@ -125,7 +125,9 @@ func (c *NatsConfig) Prepare() error {
 	return nil
 }
 
-func (c *NatsConfig) PrepareWith(dependenciesCfgSrvList ...interface{}) error {
+func (c *NatsConfig) PrepareWith(
+	_ ...interface{}, // dependencies service-components for configuration
+) error {
 	return nil
 }
 

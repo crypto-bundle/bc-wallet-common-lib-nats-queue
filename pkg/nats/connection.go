@@ -206,7 +206,7 @@ func NewConnection(ctx context.Context,
 		)
 	}
 
-	nats.RegisterEncoder(PROTOBUF_ENCODER, &ProtobufEncoder{})
+	nats.RegisterEncoder(ProtobufEncoderName, &ProtobufEncoder{})
 
 	conn := &Connection{
 		mu: sync.Mutex{},

@@ -76,7 +76,7 @@ func (c *Connection) NewJsProducerWorkersPool(
 			msgChannel, streamName,
 			subjects)
 
-		workers = append(workers, ww)
+		workers[i] = ww
 	}
 
 	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.originConn, jsCtx,
@@ -103,7 +103,7 @@ func (c *Connection) NewSimpleProducerWorkersPool(
 			msgChannel, subjectName,
 			c.originConn)
 
-		workers = append(workers, ww)
+		workers[i] = ww
 	}
 
 	producer := NewSimpleProducerWorkersPool(c.stdLoggerFactory, c.originConn, msgChannel,

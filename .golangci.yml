@@ -57,6 +57,21 @@ output:
   # make issues output unique by line, default is true
   uniq-by-line: true
 
+linters-settings:
+  depguard:
+    rules:
+      # Name of a rule.
+      main:
+        allow:
+          - $gostd
+          - github.com/nats-io/nats.go
+
+issues:
+  exclude-rules:
+    - linters:
+        - lll
+      source: "^* "
+
 linters:
   # Disable all linters.
   # Default: false

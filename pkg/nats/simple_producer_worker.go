@@ -61,6 +61,7 @@ func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 
 		case <-ctx.Done():
 			ww.logger.Printf("received close worker message")
+
 			return
 		}
 	}

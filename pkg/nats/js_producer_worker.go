@@ -59,7 +59,7 @@ type jsProducerWorkerWrapper struct {
 	num uint16
 }
 
-func (ww *jsProducerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+func (ww *jsProducerWorkerWrapper) OnClosed(_ *nats.Conn) error {
 	ww.natsProducerConn = nil
 
 	return nil

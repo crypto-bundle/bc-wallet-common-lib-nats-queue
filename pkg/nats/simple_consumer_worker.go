@@ -70,13 +70,13 @@ func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
 				return
 			}
 
-			ww.processMsg(natsMsg)
+			ww.processMsg(context.Background(), natsMsg)
 		}
 	}
 }
 
-func (ww *consumerWorkerWrapper) processMsg(msg *nats.Msg) {
-	decisionDirective, err := ww.handler.Process(context.Background(), msg)
+func (ww *consumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
+	decisionDirective, err := ww.handler.Process(ctx, msg)
 	if err != nil {
 		ww.logger.Printf("error: proccess message ended with error - %e. decision directive - %s",
 			err, decisionDirective)

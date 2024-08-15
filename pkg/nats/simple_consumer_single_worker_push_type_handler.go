@@ -95,7 +95,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 ) *jsConsumerPushQueueGroupSingeWorker {
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
-	ww := &jsConsumerWorkerWrapper{
+	workerWrapper := &jsConsumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsSimpleConsumerWorkerUnitNameTag,
@@ -105,7 +105,8 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	subscriptionSrv := newSimplePushSubscriptionService(loggerFactorySvc, natsConn, consumerCfg, ww.ProcessMsg)
+	subscriptionSrv := newSimplePushSubscriptionService(loggerFactorySvc, natsConn,
+		consumerCfg, workerWrapper.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
@@ -113,7 +114,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 			natsConsumerTypeTag:   natsSimpleConsumerWorkerUnitNameTag,
 		}),
 		subscriptionSvc: subscriptionSrv,
-		worker:          ww,
+		worker:          workerWrapper,
 	}
 
 	return workersPool

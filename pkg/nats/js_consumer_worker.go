@@ -74,23 +74,23 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 				return
 			}
 
-			ww.processMsg(natsMsg)
+			ww.processMsg(context.Background(), natsMsg)
 		}
 	}
 }
 
 func (ww *jsConsumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
-	ww.processMsg(msg)
+	ww.processMsg(context.Background(), msg)
 }
 
-func (ww *jsConsumerWorkerWrapper) processMsg(msg *nats.Msg) {
+func (ww *jsConsumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
 	msgMetaData, err := msg.Metadata()
 	if err != nil {
 		ww.logger.Printf("error: unable to read metadata - %e. %s: %s, ",
 			err, SubjectTag, msg.Subject)
 	}
 
-	decisionDirective, err := ww.handler.Process(context.Background(), msg)
+	decisionDirective, err := ww.handler.Process(ctx, msg)
 	if err != nil {
 		ww.logger.Printf("error: proccess message ended with error - %e. decision directive - %s",
 			err, decisionDirective)

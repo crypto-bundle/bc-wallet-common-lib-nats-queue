@@ -180,12 +180,10 @@ func (s *jsPullChanSubscription) onDisconnect(conn *nats.Conn, err error) {
 	s.ticker.Stop()
 }
 
-func (s *jsPullChanSubscription) tryResubscribe() error {
+func (s *jsPullChanSubscription) tryResubscribe() (err error) {
 	if !s.autoReSubscribe {
 		return nil
 	}
-
-	var err error = nil
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
@@ -207,11 +205,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,

@@ -37,7 +37,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const PROTOBUF_ENCODER = "protobuf"
+const ProtobufEncoderName = "protobuf"
 
 var (
 	ErrUnableToCastProtobufType = errors.New("unable to type-cast to proto message")
