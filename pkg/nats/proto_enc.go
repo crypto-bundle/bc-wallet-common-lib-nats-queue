@@ -34,6 +34,7 @@ package nats
 
 import (
 	"errors"
+
 	"google.golang.org/protobuf/proto"
 )
 

@@ -95,11 +95,11 @@ func (s *simplePushQueueGroupChanSubscription) Healthcheck(ctx context.Context) 
 	return true
 }
 
-func (s *simplePushQueueGroupChanSubscription) Init(ctx context.Context) error {
+func (s *simplePushQueueGroupChanSubscription) Init(_ context.Context) error {
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) Subscribe(ctx context.Context) error {
+func (s *simplePushQueueGroupChanSubscription) Subscribe(_ context.Context) error {
 	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 	if err != nil {
 		return err

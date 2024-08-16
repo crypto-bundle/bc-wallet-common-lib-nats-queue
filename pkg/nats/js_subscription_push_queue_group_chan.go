@@ -85,7 +85,7 @@ func (s *jsPushQueueGroupChanSubscription) OnClosed(_ *nats.Conn) error {
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
-	return nil
+	return s.onDisconnect(conn, err)
 }
 
 func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
@@ -136,7 +136,8 @@ func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) onDisconnect(conn *nats.Conn, err error) {
+func (s *jsPushQueueGroupChanSubscription) onDisconnect(_ *nats.Conn, _ error) error {
+	return nil
 }
 
 func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {

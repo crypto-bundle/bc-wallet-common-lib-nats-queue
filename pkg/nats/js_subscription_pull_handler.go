@@ -93,7 +93,7 @@ func (s *jsPullHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
 }
 
 func (s *jsPullHandlerSubscription) OnDisconnect(conn *nats.Conn, err error) error {
-	return nil
+	return s.onDisconnect(conn, err)
 }
 
 func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
@@ -177,8 +177,10 @@ func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 	}
 }
 
-func (s *jsPullHandlerSubscription) onDisconnect(_ *nats.Conn, _ error) {
+func (s *jsPullHandlerSubscription) onDisconnect(_ *nats.Conn, _ error) error {
 	s.ticker.Stop()
+
+	return nil
 }
 
 func (s *jsPullHandlerSubscription) tryResubscribe() error {

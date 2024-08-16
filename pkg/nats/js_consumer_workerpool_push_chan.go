@@ -57,7 +57,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("consumer: unable to call onClosed in consumer worker pool unit - %e", loopErr)
+			wp.logger.Printf("error: unable to call onClosed in consumer worker pool unit - %e", loopErr)
 		}
 
 		wp.workers[i] = nil
@@ -65,7 +65,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 	err = wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("consumer: unable to call onClosed in subscription service - %e", err)
+		wp.logger.Printf("error: unable to call onClosed in subscription service - %e", err)
 	}
 
 	close(wp.msgChannel)
