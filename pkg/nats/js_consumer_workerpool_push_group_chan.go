@@ -148,7 +148,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
-		ww := &jsConsumerWorkerWrapper{
+		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
 			logger: loggerFactorySvc.WithFields(map[string]interface{}{
@@ -160,7 +160,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}
 
-		workersPool.workers = append(workersPool.workers, ww)
+		workersPool.workers = append(workersPool.workers, workerWrapper)
 	}
 
 	return workersPool

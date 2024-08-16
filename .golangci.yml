@@ -58,6 +58,9 @@ output:
   uniq-by-line: true
 
 linters-settings:
+  exhaustive:
+    check: []
+    explicit-exhaustive-switch: true
   depguard:
     rules:
       # Name of a rule.

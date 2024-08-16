@@ -76,7 +76,7 @@ func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
+func (s *jsPushQueueGroupChanSubscription) OnClosed(_ *nats.Conn) error {
 	s.natsSubs = nil
 	s.jsNatsCtx = nil
 	s.natsConn = nil

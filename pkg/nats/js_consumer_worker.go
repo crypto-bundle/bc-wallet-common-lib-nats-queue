@@ -92,7 +92,7 @@ func (ww *jsConsumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg
 
 	decisionDirective, err := ww.handler.Process(ctx, msg)
 	if err != nil {
-		ww.logger.Printf("error: proccess message ended with error - %e. decision directive - %s",
+		ww.logger.Printf("error: process message ended with error - %e. decision directive - %s",
 			err, decisionDirective)
 	}
 

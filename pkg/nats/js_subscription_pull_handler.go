@@ -35,9 +35,10 @@ package nats
 import (
 	"context"
 	"errors"
-	"github.com/nats-io/nats.go"
 	"log"
 	"time"
+
+	"github.com/nats-io/nats.go"
 )
 
 type jsPullHandlerSubscription struct {

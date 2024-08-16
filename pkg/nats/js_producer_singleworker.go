@@ -34,8 +34,9 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
 	"log"
+
+	"github.com/nats-io/nats.go"
 )
 
 // jsProducerSingleWorker ...
@@ -69,11 +70,14 @@ func (sw *jsProducerSingleWorker) OnReconnect(newConn *nats.Conn) error {
 	return nil
 }
 
-func (sw *jsProducerSingleWorker) OnDisconnect(conn *nats.Conn, err error) error {
+func (sw *jsProducerSingleWorker) OnDisconnect(
+	_ *nats.Conn,
+	_ error,
+) error {
 	return nil
 }
 
-func (sw *jsProducerSingleWorker) Healthcheck(ctx context.Context) bool {
+func (sw *jsProducerSingleWorker) Healthcheck(_ context.Context) bool {
 	if !sw.natsProducerConn.IsConnected() {
 		sw.logger.Print("lost NATS origin connection")
 
@@ -83,7 +87,7 @@ func (sw *jsProducerSingleWorker) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (sw *jsProducerSingleWorker) Init(ctx context.Context) error {
+func (sw *jsProducerSingleWorker) Init(_ context.Context) error {
 	jsNatsCtx, err := sw.natsProducerConn.JetStream()
 	if err != nil {
 		return err

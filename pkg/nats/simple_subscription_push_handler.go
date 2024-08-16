@@ -54,7 +54,7 @@ type simplePushChanSubscription struct {
 	logger *log.Logger
 }
 
-func (s *simplePushChanSubscription) OnClosed(conn *nats.Conn) error {
+func (s *simplePushChanSubscription) OnClosed(_ *nats.Conn) error {
 	s.natsSubs = nil
 	s.natsConn = nil
 
@@ -74,11 +74,11 @@ func (s *simplePushChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
+func (s *simplePushChanSubscription) OnDisconnect(_ *nats.Conn, _ error) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Healthcheck(ctx context.Context) bool {
+func (s *simplePushChanSubscription) Healthcheck(_ context.Context) bool {
 	if !s.natsConn.IsConnected() {
 		s.logger.Print("lost NATS origin connection")
 
