@@ -58,6 +58,12 @@ output:
   uniq-by-line: true
 
 linters-settings:
+  revive:
+    rules:
+      - name: unexported-return
+        severity: warning
+        disabled: true
+
   exhaustive:
     check: []
     explicit-exhaustive-switch: true

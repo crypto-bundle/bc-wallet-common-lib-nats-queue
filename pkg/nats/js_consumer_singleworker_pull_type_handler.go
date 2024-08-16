@@ -113,7 +113,6 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
 ) *jsPullTypeHandlerConsumer {
-
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	workerWrapper := &jsConsumerWorkerWrapper{

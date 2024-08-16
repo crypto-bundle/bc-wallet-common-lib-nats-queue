@@ -86,7 +86,6 @@ func (wp *simpleProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) err
 }
 
 func (wp *simpleProducerWorkerPool) Init(ctx context.Context) error {
-
 	return nil
 }
 

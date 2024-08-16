@@ -176,7 +176,7 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 	}
 }
 
-func (s *jsPullChanSubscription) onDisconnect(conn *nats.Conn, err error) {
+func (s *jsPullChanSubscription) onDisconnect(_ *nats.Conn, _ error) {
 	s.ticker.Stop()
 }
 
