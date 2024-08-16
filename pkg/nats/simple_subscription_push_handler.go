@@ -94,7 +94,7 @@ func (s *simplePushChanSubscription) Healthcheck(_ context.Context) bool {
 	return true
 }
 
-func (s *simplePushChanSubscription) Init(ctx context.Context) error {
+func (s *simplePushChanSubscription) Init(_ context.Context) error {
 	return nil
 }
 
@@ -123,7 +123,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	var err error = nil
+	var err error
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
@@ -145,11 +145,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func newSimplePushSubscriptionService(loggerFactorySvc loggerService,

@@ -134,10 +134,12 @@ func (s *jsPushSubscription) UnSubscribe() error {
 	return nil
 }
 
-func (s *jsPushSubscription) tryResubscribe() (err error) {
+func (s *jsPushSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
+
+	var err error
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
@@ -146,6 +148,8 @@ func (s *jsPushSubscription) tryResubscribe() (err error) {
 				subsErr, ResubscribeTag, i)
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
+			err = subsErr
 
 			continue
 		}

@@ -181,10 +181,12 @@ func (s *jsPullHandlerSubscription) onDisconnect(conn *nats.Conn, err error) {
 	s.ticker.Stop()
 }
 
-func (s *jsPullHandlerSubscription) tryResubscribe() (err error) {
+func (s *jsPullHandlerSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
+
+	var err error
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)

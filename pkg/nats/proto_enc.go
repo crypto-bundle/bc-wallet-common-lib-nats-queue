@@ -66,7 +66,7 @@ func (pe *ProtobufEncoder) Encode(_ string, // subject
 func (pe *ProtobufEncoder) Decode(_ string, // subject
 	data []byte,
 	vPtr interface{},
-) (err error) {
+) error {
 	protoMsgPtr, ok := vPtr.(proto.Message)
 	if !ok {
 		return ErrUnableToCastProtobufType

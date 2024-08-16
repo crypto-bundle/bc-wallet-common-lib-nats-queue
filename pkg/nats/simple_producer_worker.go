@@ -34,8 +34,9 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
 	"log"
+
+	"github.com/nats-io/nats.go"
 )
 
 // producerWorkerWrapper ...

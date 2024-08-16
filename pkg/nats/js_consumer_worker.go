@@ -52,7 +52,7 @@ type jsConsumerWorkerWrapper struct {
 	reQueueDelay      []time.Duration
 }
 
-func (ww *jsConsumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+func (ww *jsConsumerWorkerWrapper) OnClosed(_ *nats.Conn) error {
 	ww.msgChannel = nil
 	ww.handler = nil
 

@@ -119,10 +119,12 @@ func (s *simplePushQueueGroupChanSubscription) UnSubscribe() error {
 	return nil
 }
 
-func (s *simplePushQueueGroupChanSubscription) tryResubscribe() (err error) {
+func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
+
+	var err error
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)

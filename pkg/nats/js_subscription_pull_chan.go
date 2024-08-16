@@ -64,7 +64,7 @@ type jsPullChanSubscription struct {
 	logger *log.Logger
 }
 
-func (s *jsPullChanSubscription) OnClosed(conn *nats.Conn) error {
+func (s *jsPullChanSubscription) OnClosed(_ *nats.Conn) error {
 	s.natsConn = nil
 	s.natsSubs = nil
 	s.jsNatsCtx = nil
@@ -180,10 +180,12 @@ func (s *jsPullChanSubscription) onDisconnect(conn *nats.Conn, err error) {
 	s.ticker.Stop()
 }
 
-func (s *jsPullChanSubscription) tryResubscribe() (err error) {
+func (s *jsPullChanSubscription) tryResubscribe() error {
 	if !s.autoReSubscribe {
 		return nil
 	}
+
+	var err error
 
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)

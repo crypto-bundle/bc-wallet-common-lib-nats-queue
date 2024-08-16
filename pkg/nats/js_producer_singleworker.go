@@ -98,7 +98,7 @@ func (sw *jsProducerSingleWorker) Init(_ context.Context) error {
 	return nil
 }
 
-func (sw *jsProducerSingleWorker) Run(ctx context.Context) error {
+func (sw *jsProducerSingleWorker) Run(_ context.Context) error {
 	return nil
 }
 

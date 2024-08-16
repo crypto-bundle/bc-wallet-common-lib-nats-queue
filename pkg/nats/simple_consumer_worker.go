@@ -75,6 +75,10 @@ func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
 	}
 }
 
+func (ww *consumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
+	ww.processMsg(context.Background(), msg)
+}
+
 func (ww *consumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
 	decisionDirective, err := ww.handler.Process(ctx, msg)
 	if err != nil {

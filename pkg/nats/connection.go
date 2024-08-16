@@ -194,8 +194,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 }
 
 // NewConnection nats originConn instance
-func NewConnection(ctx context.Context,
-	cfg configParams,
+func NewConnection(cfg configParams,
 	loggerFactorySvc loggerService,
 ) *Connection {
 	options := make([]nats.Option, 0)
@@ -225,8 +224,11 @@ func NewConnection(ctx context.Context,
 		retryCount:   cfg.GetNatsConnectionRetryCount(),
 		retryTimeOut: cfg.GetNatsConnectionRetryTimeout(),
 
-		consumerCounter:  0,
+		consumerCounter: 0,
+		consumers:       nil,
+
 		producersCounter: 0,
+		producers:        nil,
 	}
 
 	return conn

@@ -34,22 +34,21 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
 	"log"
+
+	"github.com/nats-io/nats.go"
 )
 
 // simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps a
 type simpleConsumerSingeWorker struct {
-	subscriptionSrv subscriptionService
-
-	handler func(msg *nats.Msg)
-	worker  *jsConsumerWorkerWrapper
+	subscriptionSvc subscriptionService
+	worker          *consumerWorkerWrapper
 
 	logger *log.Logger
 }
 
 func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
-	err := wp.subscriptionSrv.OnReconnect(conn)
+	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
 		return err
 	}
@@ -58,7 +57,7 @@ func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
 }
 
 func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) error {
-	retErr := wp.subscriptionSrv.OnDisconnect(conn, err)
+	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
 		return retErr
 	}
@@ -66,8 +65,19 @@ func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) er
 	return nil
 }
 
+func (wp *simpleConsumerSingeWorker) OnClosed(conn *nats.Conn) error {
+	err := wp.subscriptionSvc.OnClosed(conn)
+	if err != nil {
+		wp.logger.Printf("error: unable to call onClosed callbac - %e", err)
+	}
+
+	wp.subscriptionSvc = nil
+
+	return nil
+}
+
 func (wp *simpleConsumerSingeWorker) Init(ctx context.Context) error {
-	err := wp.subscriptionSrv.Init(ctx)
+	err := wp.subscriptionSvc.Init(ctx)
 	if err != nil {
 		return err
 	}
@@ -76,11 +86,11 @@ func (wp *simpleConsumerSingeWorker) Init(ctx context.Context) error {
 }
 
 func (wp *simpleConsumerSingeWorker) Healthcheck(ctx context.Context) bool {
-	return wp.subscriptionSrv.Healthcheck(ctx)
+	return wp.subscriptionSvc.Healthcheck(ctx)
 }
 
 func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
-	err := wp.subscriptionSrv.Subscribe(ctx)
+	err := wp.subscriptionSvc.Subscribe(ctx)
 	if err != nil {
 		return err
 	}
@@ -92,30 +102,26 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
-) *jsConsumerPushQueueGroupSingeWorker {
-	requeueDelays := consumerCfg.GetNakDelayTimings()
-
-	workerWrapper := &jsConsumerWorkerWrapper{
+) *simpleConsumerSingeWorker {
+	workerWrapper := &consumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsSimpleConsumerWorkerUnitNameTag,
 		}),
-		handler:           handler,
-		reQueueDelay:      requeueDelays,
-		reQueueDelayCount: uint64(len(requeueDelays) - 1),
+		handler: handler,
 	}
 
-	subscriptionSrv := newSimplePushSubscriptionService(loggerFactorySvc, natsConn,
+	subscriptionSvc := newSimplePushSubscriptionService(loggerFactorySvc, natsConn,
 		consumerCfg, workerWrapper.ProcessMsg)
 
-	workersPool := &jsConsumerPushQueueGroupSingeWorker{
+	worker := &simpleConsumerSingeWorker{
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsWorkerNameTag,
 			natsConsumerTypeTag:   natsSimpleConsumerWorkerUnitNameTag,
 		}),
-		subscriptionSvc: subscriptionSrv,
+		subscriptionSvc: subscriptionSvc,
 		worker:          workerWrapper,
 	}
 
-	return workersPool
+	return worker
 }

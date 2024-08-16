@@ -124,11 +124,11 @@ func (c *Connection) NewSimpleConsumerWorkersPool(consumerCfg consumerConfigQueu
 
 func (c *Connection) NewSimpleConsumerSingleWorker(consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
-) *simpleConsumerWorkerPool {
+) *simpleConsumerSingeWorker {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerSingeWorker(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++
