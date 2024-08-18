@@ -48,11 +48,16 @@ const (
 )
 
 func (d ConsumerDirective) String() string {
-	return [...]string{"",
-		DirectiveForRejectName,
-		DirectiveForPassName,
-		DirectiveForReQueueName,
-	}[d]
+	switch d {
+	case DirectiveForReject:
+		return DirectiveForRejectName
+	case DirectiveForPass:
+		return DirectiveForPassName
+	case DirectiveForReQueue:
+		return DirectiveForReQueueName
+	default:
+		return "<nil>"
+	}
 }
 
 type ConsumerType uint
