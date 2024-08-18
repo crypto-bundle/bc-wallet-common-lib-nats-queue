@@ -35,7 +35,6 @@ package nats
 import (
 	"context"
 	"log"
-
 	"sync/atomic"
 
 	"github.com/nats-io/nats.go"

@@ -32,94 +32,9 @@
 
 package nats
 
-import (
-	"context"
-	"log"
-	"time"
+import "errors"
 
-	"github.com/nats-io/nats.go"
+var (
+	ErrUnableToCastProtobufType = errors.New("unable to type-cast to proto message")
+	ErrNilPubAck                = errors.New("nil pub ack received")
 )
-
-// jsConsumerWorkerWrapper ...
-type jsConsumerWorkerWrapper struct {
-	msgChannel <-chan *nats.Msg
-
-	handler consumerHandler
-
-	logger *log.Logger
-
-	reQueueDelayCount uint64
-	reQueueDelay      []time.Duration
-}
-
-func (ww *jsConsumerWorkerWrapper) OnClosed(_ *nats.Conn) error {
-	ww.msgChannel = nil
-	ww.handler = nil
-
-	return nil
-}
-
-func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			ww.logger.Print("received close worker message")
-
-			return
-
-		case natsMsg, ok := <-ww.msgChannel:
-			if !ok {
-				ww.logger.Print("nats message channel is closed")
-
-				return
-			}
-
-			ww.processMsg(context.TODO(), natsMsg)
-		}
-	}
-}
-
-func (ww *jsConsumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
-	ww.processMsg(context.Background(), msg)
-}
-
-func (ww *jsConsumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
-	msgMetaData, err := msg.Metadata()
-	if err != nil {
-		ww.logger.Printf("error: unable to read metadata - %e. %s: %s, ",
-			err, SubjectTag, msg.Subject)
-	}
-
-	decisionDirective, err := ww.handler.Process(ctx, msg)
-	if err != nil {
-		ww.logger.Printf("error: process message ended with error - %e. decision directive - %s",
-			err, decisionDirective)
-	}
-
-	switch {
-	case decisionDirective == DirectiveForPass:
-		arrErr := msg.Ack()
-		if arrErr != nil {
-			ww.logger.Printf("error: unable to ACK message - %e", arrErr)
-		}
-
-	case decisionDirective == DirectiveForReQueue:
-		var delay time.Duration
-		if msgMetaData.NumDelivered > ww.reQueueDelayCount {
-			delay = ww.reQueueDelay[ww.reQueueDelayCount]
-		} else {
-			delay = ww.reQueueDelay[msgMetaData.NumDelivered-1]
-		}
-
-		nakErr := msg.NakWithDelay(delay)
-		if nakErr != nil {
-			ww.logger.Printf("error: unable to RE-QUEUE message - %e", nakErr)
-		}
-
-	case decisionDirective == DirectiveForReject:
-		termErr := msg.Term()
-		if termErr != nil {
-			ww.logger.Printf("error: unable to REJECTION-ACK message - %e", err)
-		}
-	}
-}

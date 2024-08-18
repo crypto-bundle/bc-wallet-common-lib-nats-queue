@@ -34,9 +34,10 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
 	"log"
 	"time"
+
+	"github.com/nats-io/nats.go"
 )
 
 type simplePushQueueGroupChanSubscription struct {

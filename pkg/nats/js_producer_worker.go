@@ -34,17 +34,12 @@ package nats
 
 import (
 	"context"
-	"errors"
 	"log"
 
 	"github.com/nats-io/nats.go"
 )
 
 type ProducerWorkerTask func(msg nats.Msg) error
-
-var (
-	ErrNilPubAck = errors.New("nil pub ack received")
-)
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {

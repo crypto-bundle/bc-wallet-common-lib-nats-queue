@@ -33,16 +33,10 @@
 package nats
 
 import (
-	"errors"
-
 	"google.golang.org/protobuf/proto"
 )
 
 const ProtobufEncoderName = "protobuf"
-
-var (
-	ErrUnableToCastProtobufType = errors.New("unable to type-cast to proto message")
-)
 
 // ProtobufEncoder is a Protobuf Encoder implementation for EncodedConn.
 // This encoder will use the builtin github.com/golang/protobuf/proto to Marshal
