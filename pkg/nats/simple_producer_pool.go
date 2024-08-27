@@ -43,6 +43,7 @@ import (
 // simpleProducerWorkerPool is a minimal Worker implementation that simply wraps a
 type simpleProducerWorkerPool struct {
 	logger *log.Logger
+	e      errorFormatterService
 
 	msgChannel chan *nats.Msg
 
@@ -76,15 +77,15 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	return err
 }
 
-func (wp *simpleProducerWorkerPool) OnReconnect(conn *nats.Conn) error {
+func (wp *simpleProducerWorkerPool) OnReconnect(_ *nats.Conn) error {
 	return nil
 }
 
-func (wp *simpleProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+func (wp *simpleProducerWorkerPool) OnDisconnect(_ *nats.Conn, _ error) error {
 	return nil
 }
 
-func (wp *simpleProducerWorkerPool) Init(ctx context.Context) error {
+func (wp *simpleProducerWorkerPool) Init(_ context.Context) error {
 	return nil
 }
 
@@ -121,6 +122,7 @@ func (wp *simpleProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.M
 }
 
 func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsProducerConn *nats.Conn,
 	msgChannel chan *nats.Msg,
 	workers []*producerWorkerWrapper,
@@ -131,6 +133,7 @@ func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
 
 	workersPool := &simpleProducerWorkerPool{
 		logger: logger,
+		e:      errFormatterSvc,
 
 		msgChannel:       msgChannel,
 		natsProducerConn: natsProducerConn,

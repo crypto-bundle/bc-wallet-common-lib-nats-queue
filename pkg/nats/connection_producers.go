@@ -41,7 +41,7 @@ func (c *Connection) NewJsProducerSingleWorker(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, c.originConn,
+	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, c.e, c.originConn,
 		streamName, subjects)
 
 	c.producers = append(c.producers, producer)
@@ -69,7 +69,7 @@ func (c *Connection) NewJsProducerWorkersPool(
 		workers[i] = ww
 	}
 
-	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.originConn,
+	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
 		msgChannel, workers)
 
 	c.producers = append(c.producers, producer)
@@ -89,14 +89,14 @@ func (c *Connection) NewSimpleProducerWorkersPool(
 	workers := make([]*producerWorkerWrapper, workersCount)
 
 	for i := uint32(0); i < workersCount; i++ {
-		ww := newProducerWorker(c.stdLoggerFactory, i,
+		ww := newProducerWorker(c.stdLoggerFactory, c.e, i,
 			msgChannel, subjectName,
 			c.originConn)
 
 		workers[i] = ww
 	}
 
-	producer := NewSimpleProducerWorkersPool(c.stdLoggerFactory, c.originConn, msgChannel,
+	producer := NewSimpleProducerWorkersPool(c.stdLoggerFactory, c.e, c.originConn, msgChannel,
 		workers)
 
 	c.producers = append(c.producers, producer)

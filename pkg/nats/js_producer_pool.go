@@ -78,7 +78,7 @@ func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return wp.e.ErrorOnly(err, "unable to get JetStream context")
 	}
 
 	wp.jsNatsCtx = jsNatsCtx

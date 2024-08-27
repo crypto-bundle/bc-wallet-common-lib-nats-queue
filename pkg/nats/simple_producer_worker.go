@@ -42,6 +42,7 @@ import (
 // producerWorkerWrapper ...
 type producerWorkerWrapper struct {
 	logger *log.Logger
+	e      errorFormatterService
 
 	natsProducerConn *nats.Conn
 	msgChannel       <-chan *nats.Msg
@@ -74,11 +75,11 @@ func (ww *producerWorkerWrapper) OnReconnect(conn *nats.Conn) error {
 	return nil
 }
 
-func (ww *producerWorkerWrapper) OnDisconnect(conn *nats.Conn, err error) error {
+func (ww *producerWorkerWrapper) OnDisconnect(_ *nats.Conn, _ error) error {
 	return nil
 }
 
-func (ww *producerWorkerWrapper) OnClosed(conn *nats.Conn) error {
+func (ww *producerWorkerWrapper) OnClosed(_ *nats.Conn) error {
 	ww.natsProducerConn = nil
 
 	return nil
@@ -91,13 +92,14 @@ func (ww *producerWorkerWrapper) PublishMsg(v *nats.Msg) error {
 func (ww *producerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	err := ww.natsProducerConn.PublishMsg(v)
 	if err != nil {
-		return err
+		return ww.e.ErrorOnly(err, "unable to publish message")
 	}
 
 	return nil
 }
 
 func newProducerWorker(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	subject string,
@@ -109,6 +111,7 @@ func newProducerWorker(loggerFactorySvc loggerService,
 
 	return &producerWorkerWrapper{
 		logger:           logger,
+		e:                errFormatterSvc,
 		msgChannel:       msgChannel,
 		subject:          subject,
 		natsProducerConn: natsProducerConn,
