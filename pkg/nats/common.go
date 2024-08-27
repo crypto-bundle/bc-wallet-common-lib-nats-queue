@@ -40,6 +40,13 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+type errorFormatterService interface {
+	ErrorOnly(err error, details ...string) error
+	Errorf(err error, format string, args ...interface{}) error
+	NewError(details ...string) error
+	NewErrorf(format string, args ...interface{}) error
+}
+
 type configParams interface {
 	GetNatsAddresses() []string
 	GetNatsJoinedAddresses() string

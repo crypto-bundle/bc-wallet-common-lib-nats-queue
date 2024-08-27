@@ -42,6 +42,7 @@ import (
 // jsProducerSingleWorker ...
 type jsProducerSingleWorker struct {
 	logger *log.Logger
+	e      errorFormatterService
 
 	streamName string
 	subjects   []string
@@ -90,7 +91,7 @@ func (sw *jsProducerSingleWorker) Healthcheck(_ context.Context) bool {
 func (sw *jsProducerSingleWorker) Init(_ context.Context) error {
 	jsNatsCtx, err := sw.natsProducerConn.JetStream()
 	if err != nil {
-		return err
+		return sw.e.ErrorOnly(err, "unable to get JetStream context")
 	}
 
 	sw.jsCtx = jsNatsCtx
@@ -123,7 +124,7 @@ func (sw *jsProducerSingleWorker) ProduceSync(ctx context.Context, msg *nats.Msg
 func (sw *jsProducerSingleWorker) produce(_ context.Context, msg *nats.Msg) error {
 	pubAck, err := sw.jsCtx.PublishMsg(msg)
 	if err != nil {
-		return err
+		return sw.e.ErrorOnly(err, "unable to publish message")
 	}
 
 	if pubAck == nil {
@@ -137,8 +138,8 @@ func (sw *jsProducerSingleWorker) produce(_ context.Context, msg *nats.Msg) erro
 }
 
 func NewJsProducerSingleWorkerService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsProducerConn *nats.Conn,
-	jsProducerCtx nats.JetStreamContext,
 	streamName string,
 	subjects []string,
 ) *jsProducerSingleWorker {
@@ -147,10 +148,11 @@ func NewJsProducerSingleWorkerService(loggerFactorySvc loggerService,
 			map[string]interface{}{
 				natsFunctionalUnitTag: natsJetStreamProducerUnitNameTag,
 			}),
+		e:                errFormatterSvc,
 		streamName:       streamName,
 		subjects:         subjects,
 		natsProducerConn: natsProducerConn,
-		jsCtx:            jsProducerCtx, // will be filed @ init stage
+		jsCtx:            nil, // will be filled @ init stage
 	}
 
 	return workersPool

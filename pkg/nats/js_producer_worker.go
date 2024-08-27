@@ -60,6 +60,12 @@ func (ww *jsProducerWorkerWrapper) OnClosed(_ *nats.Conn) error {
 	return nil
 }
 
+func (ww *jsProducerWorkerWrapper) Init(_ context.Context, natsJsCtx nats.JetStreamContext) error {
+	ww.natsProducerConn = natsJsCtx
+
+	return nil
+}
+
 func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
@@ -99,7 +105,6 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 }
 
 func newJsProducerWorker(loggerFactorySvc loggerService,
-	natsProducerConn nats.JetStreamContext,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
@@ -113,7 +118,7 @@ func newJsProducerWorker(loggerFactorySvc loggerService,
 		msgChannel:       msgChannel,
 		streamName:       streamName,
 		subjects:         subjects,
-		natsProducerConn: natsProducerConn,
+		natsProducerConn: nil, // will be filled @ init stage
 		num:              uint16(workerNum),
 	}
 }

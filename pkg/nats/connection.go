@@ -51,6 +51,7 @@ type Connection struct {
 
 	stdLoggerFactory loggerService
 	logger           *log.Logger
+	e                errorFormatterService
 
 	addresses []string
 
@@ -96,7 +97,7 @@ func (c *Connection) healthCheckProducers(ctx context.Context) bool {
 func (c *Connection) Connect() error {
 	inst, err := nats.Connect(c.cfg.GetNatsJoinedAddresses(), c.options...)
 	if err != nil {
-		return err
+		return c.e.ErrorOnly(err, "unable connect to nats server")
 	}
 
 	inst.SetDisconnectErrHandler(c.onDisconnect)
@@ -196,6 +197,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 // NewConnection nats originConn instance
 func NewConnection(cfg configParams,
 	loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 ) *Connection {
 	options := make([]nats.Option, 0)
 	if cfg.IsRetryOnConnectionFailed() {
@@ -214,6 +216,7 @@ func NewConnection(cfg configParams,
 		logger: loggerFactorySvc.WithFields(map[string]interface{}{
 			natsFunctionalUnitTag: natsConnectionUnitNameTag,
 		}),
+		e:          errFormatterSvc,
 		originConn: nil, // will be settled @ Connect receiver-function call
 		options:    options,
 

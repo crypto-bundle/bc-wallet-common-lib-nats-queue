@@ -67,4 +67,6 @@ const (
 	QueuePubAckSequenceTag   = "queue_pub_ack_sequence"
 
 	workerUnitNumberTag = "worker_unit_num"
+
+	roundRobinInitialIndex = 1
 )

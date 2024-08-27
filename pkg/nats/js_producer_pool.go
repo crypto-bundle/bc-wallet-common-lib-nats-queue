@@ -43,6 +43,7 @@ import (
 // jsProducerWorkerPool is a minimal Worker implementation that simply wraps a
 type jsProducerWorkerPool struct {
 	logger *log.Logger
+	e      errorFormatterService
 
 	msgChannel chan *nats.Msg
 
@@ -101,7 +102,21 @@ func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (wp *jsProducerWorkerPool) Init(_ context.Context) error {
+func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
+	jsNatsCtx, err := wp.natsConn.JetStream()
+	if err != nil {
+		return wp.e.ErrorOnly(err, "unable to get JetStream context")
+	}
+
+	wp.jsNatsCtx = jsNatsCtx
+
+	for i, _ := range wp.workers {
+		loopErr := wp.workers[i].Init(ctx, jsNatsCtx)
+		if loopErr != nil {
+			return loopErr
+		}
+	}
+
 	return nil
 }
 
@@ -124,8 +139,8 @@ func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) 
 }
 
 func NewJsProducerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsProducerConn *nats.Conn,
-	natsJsCtx nats.JetStreamContext,
 	msgChannel chan *nats.Msg,
 	workers []*jsProducerWorkerWrapper,
 ) *jsProducerWorkerPool {
@@ -134,14 +149,16 @@ func NewJsProducerWorkersPool(loggerFactorySvc loggerService,
 			map[string]interface{}{
 				natsFunctionalUnitTag: natsProducerWorkerPoolUnitNameTag,
 			}),
+		e: errFormatterSvc,
+
 		msgChannel: msgChannel,
 
 		natsConn:  natsProducerConn,
-		jsNatsCtx: natsJsCtx,
+		jsNatsCtx: nil, // will be filled @ init stage
 
 		workers:      workers,
 		workersCount: uint32(len(workers)),
-		rr:           1, // round-robin index
+		rr:           roundRobinInitialIndex, // round-robin index
 	}
 
 	return workersPool

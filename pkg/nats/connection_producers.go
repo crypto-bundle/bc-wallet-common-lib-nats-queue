@@ -41,12 +41,7 @@ func (c *Connection) NewJsProducerSingleWorker(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsNatsCtx, err := c.originConn.JetStream()
-	if err != nil {
-		return nil
-	}
-
-	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, c.originConn, jsNatsCtx,
+	producer := NewJsProducerSingleWorkerService(c.stdLoggerFactory, c.originConn,
 		streamName, subjects)
 
 	c.producers = append(c.producers, producer)
@@ -63,23 +58,18 @@ func (c *Connection) NewJsProducerWorkersPool(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsCtx, err := c.originConn.JetStream()
-	if err != nil {
-		return nil
-	}
-
 	msgChannel := make(chan *nats.Msg, workersCount)
 	workers := make([]*jsProducerWorkerWrapper, workersCount)
 
 	for i := uint32(0); i < workersCount; i++ {
-		ww := newJsProducerWorker(c.stdLoggerFactory, jsCtx, i,
+		ww := newJsProducerWorker(c.stdLoggerFactory, i,
 			msgChannel, streamName,
 			subjects)
 
 		workers[i] = ww
 	}
 
-	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.originConn, jsCtx,
+	producer := NewJsProducerWorkersPool(c.stdLoggerFactory, c.originConn,
 		msgChannel, workers)
 
 	c.producers = append(c.producers, producer)
