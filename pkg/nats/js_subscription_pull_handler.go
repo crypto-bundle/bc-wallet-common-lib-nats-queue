@@ -61,6 +61,7 @@ type jsPullHandlerSubscription struct {
 	ticker *time.Ticker
 
 	logger *log.Logger
+	e      errorFormatterService
 
 	handler func(msg *nats.Msg)
 }
@@ -77,7 +78,7 @@ func (s *jsPullHandlerSubscription) OnClosed(conn *nats.Conn) error {
 func (s *jsPullHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -115,7 +116,7 @@ func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
 func (s *jsPullHandlerSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -126,7 +127,7 @@ func (s *jsPullHandlerSubscription) Init(ctx context.Context) error {
 func (s *jsPullHandlerSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS pull subscription")
 	}
 
 	s.natsSubs = subs
@@ -140,7 +141,7 @@ func (s *jsPullHandlerSubscription) Subscribe(ctx context.Context) error {
 func (s *jsPullHandlerSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	s.ticker.Stop()
@@ -154,7 +155,6 @@ func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 		case <-s.ticker.C:
 			msgList, fetchErr := s.natsSubs.Fetch(int(s.fetchLimit),
 				nats.MaxWait(s.fetchTimeout))
-
 			if fetchErr == nil {
 				for i := 0; i != len(msgList); i++ {
 					s.handler(msgList[i])
@@ -214,6 +214,7 @@ func (s *jsPullHandlerSubscription) tryResubscribe() error {
 }
 
 func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler func(msg *nats.Msg),
@@ -255,5 +256,6 @@ func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }

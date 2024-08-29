@@ -109,6 +109,7 @@ func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 }
 
 func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	handler consumerHandler,
@@ -125,7 +126,7 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc, jsNatsConn,
+	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc, errFormatterSvc, jsNatsConn,
 		consumerCfg, workerWrapper.ProcessMsg)
 
 	return &jsPullTypeHandlerConsumer{

@@ -46,6 +46,7 @@ type jsConsumerPushQueueGroupSingeWorker struct {
 	worker *jsConsumerWorkerWrapper
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -109,6 +110,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 }
 
 func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
@@ -125,7 +127,8 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(loggerFactorySvc, natsConn, consumerCfg,
+	subscriptionSvc := newJsPushQueueGroupHandlerSubscription(loggerFactorySvc, errFormatterSvc,
+		natsConn, consumerCfg,
 		workerWrapper.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{

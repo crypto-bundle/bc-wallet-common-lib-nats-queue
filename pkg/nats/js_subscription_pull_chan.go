@@ -62,6 +62,7 @@ type jsPullChanSubscription struct {
 	ticker *time.Ticker
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *jsPullChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -76,7 +77,7 @@ func (s *jsPullChanSubscription) OnClosed(_ *nats.Conn) error {
 func (s *jsPullChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -114,7 +115,7 @@ func (s *jsPullChanSubscription) Healthcheck(ctx context.Context) bool {
 func (s *jsPullChanSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -139,7 +140,7 @@ func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
 func (s *jsPullChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	s.ticker.Stop()
@@ -209,10 +210,11 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	return err
+	return s.e.ErrorOnly(err)
 }
 
 func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
 	msgChannel chan *nats.Msg,
@@ -254,5 +256,6 @@ func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }

@@ -56,12 +56,13 @@ type jsPushQueueGroupHandlerSubscription struct {
 	handler func(msg *nats.Msg)
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *jsPushQueueGroupHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -108,7 +109,7 @@ func (s *jsPushQueueGroupHandlerSubscription) Healthcheck(ctx context.Context) b
 func (s *jsPushQueueGroupHandlerSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -120,7 +121,7 @@ func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) err
 	subs, err := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
 		s.handler, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS queue subscription")
 	}
 
 	s.natsSubs = subs
@@ -131,7 +132,7 @@ func (s *jsPushQueueGroupHandlerSubscription) Subscribe(ctx context.Context) err
 func (s *jsPushQueueGroupHandlerSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
@@ -166,13 +167,14 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 	}
 
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	return nil
 }
 
 func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 
@@ -208,5 +210,6 @@ func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }
