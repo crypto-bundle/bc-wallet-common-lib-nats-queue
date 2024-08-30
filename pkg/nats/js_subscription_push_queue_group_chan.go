@@ -56,6 +56,7 @@ type jsPushQueueGroupChanSubscription struct {
 	msgChannel chan *nats.Msg
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -107,7 +108,7 @@ func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool
 func (s *jsPushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -119,7 +120,7 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS chan-queue subscription")
 	}
 
 	s.natsSubs = subs
@@ -130,7 +131,7 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
@@ -169,13 +170,14 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	return nil
 }
 
 func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
@@ -210,5 +212,6 @@ func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }

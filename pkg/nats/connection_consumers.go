@@ -84,7 +84,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerGroupWorkersPool(consumerConfig
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsConsumer := NewJsPushTypeChannelGroupConsumerWorkersPool(c.stdLoggerFactory, c.originConn,
+	jsConsumer := NewJsPushTypeChannelGroupConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
 		consumerConfig, handler)
 
 	c.consumers = append(c.consumers, jsConsumer)
@@ -99,7 +99,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(consumerConfig cons
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsConsumer := NewJsPushTypeChannelConsumerWorkersPool(c.stdLoggerFactory, c.originConn,
+	jsConsumer := NewJsPushTypeChannelConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
 		consumerConfig, handler)
 
 	c.consumers = append(c.consumers, jsConsumer)
@@ -114,7 +114,7 @@ func (c *Connection) NewSimpleConsumerWorkersPool(consumerCfg consumerConfigQueu
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++

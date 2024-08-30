@@ -42,13 +42,15 @@ type jsPushTypeQueueGroupChannelConsumerWorkerPool struct {
 }
 
 func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *jsPushTypeQueueGroupChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc, natsConn, consumerCfg, msgChannel)
+	subscriptionSrv := newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc, errFormatterSvc,
+		natsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler: handler,

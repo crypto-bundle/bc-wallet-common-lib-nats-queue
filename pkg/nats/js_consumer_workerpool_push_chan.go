@@ -126,13 +126,15 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 }
 
 func NewJsPushTypeChannelConsumerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
 	handler consumerHandler,
 ) *jsPushTypeChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newJsPushSubscriptionService(loggerFactorySvc, natsConn, consumerCfg, msgChannel)
+	subscriptionSrv := newJsPushSubscriptionService(loggerFactorySvc, errFormatterSvc,
+		natsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler: handler,

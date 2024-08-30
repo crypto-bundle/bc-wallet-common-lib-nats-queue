@@ -54,6 +54,7 @@ type simplePushQueueGroupChanSubscription struct {
 	msgChannel chan *nats.Msg
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *simplePushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
@@ -103,7 +104,7 @@ func (s *simplePushQueueGroupChanSubscription) Init(_ context.Context) error {
 func (s *simplePushQueueGroupChanSubscription) Subscribe(_ context.Context) error {
 	subs, err := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS channel queue-subscription")
 	}
 
 	s.natsSubs = subs
@@ -114,7 +115,7 @@ func (s *simplePushQueueGroupChanSubscription) Subscribe(_ context.Context) erro
 func (s *simplePushQueueGroupChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
@@ -147,10 +148,15 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
+	if err != nil {
+		return s.e.ErrorOnly(err)
+	}
+
 	return err
 }
 
 func newSimplePushQueueGroupSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
@@ -172,5 +178,6 @@ func newSimplePushQueueGroupSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsSimpleSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }

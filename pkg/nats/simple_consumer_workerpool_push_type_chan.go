@@ -124,13 +124,14 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 }
 
 func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *simpleConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(loggerFactorySvc, natsConn,
+	subscriptionSvc := newSimplePushQueueGroupSubscriptionService(loggerFactorySvc, errFormatterSvc, natsConn,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
@@ -140,7 +141,7 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 		}),
 		workers:         nil,
-		subscriptionSrv: subscriptionSrv,
+		subscriptionSrv: subscriptionSvc,
 
 		msgChannel: msgChannel,
 	}

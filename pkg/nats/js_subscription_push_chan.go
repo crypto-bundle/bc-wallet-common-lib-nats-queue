@@ -55,6 +55,7 @@ type jsPushSubscription struct {
 	msgChannel chan *nats.Msg
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
@@ -117,7 +118,7 @@ func (s *jsPushSubscription) Init(ctx context.Context) error {
 func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS channel subscription")
 	}
 
 	s.natsSubs = subs
@@ -128,7 +129,7 @@ func (s *jsPushSubscription) Subscribe(ctx context.Context) error {
 func (s *jsPushSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
@@ -161,10 +162,15 @@ func (s *jsPushSubscription) tryResubscribe() error {
 		return nil
 	}
 
+	if err != nil {
+		return s.e.ErrorOnly(err)
+	}
+
 	return err
 }
 
 func newJsPushSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 
 	consumerCfg consumerConfig,
@@ -199,5 +205,6 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }
