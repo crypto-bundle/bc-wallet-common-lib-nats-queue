@@ -152,7 +152,7 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 		return s.e.ErrorOnly(err)
 	}
 
-	return err
+	return nil
 }
 
 func newSimplePushQueueGroupSubscriptionService(loggerFactorySvc loggerService,

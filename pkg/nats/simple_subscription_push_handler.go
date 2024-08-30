@@ -53,6 +53,7 @@ type simplePushChanSubscription struct {
 	handler func(msg *nats.Msg)
 
 	logger *log.Logger
+	e      errorFormatterService
 }
 
 func (s *simplePushChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -99,10 +100,10 @@ func (s *simplePushChanSubscription) Init(_ context.Context) error {
 	return nil
 }
 
-func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
+func (s *simplePushChanSubscription) Subscribe(_ context.Context) error {
 	subs, err := s.natsConn.Subscribe(s.subjectName, s.handler)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS subscription")
 	}
 
 	s.natsSubs = subs
@@ -113,7 +114,7 @@ func (s *simplePushChanSubscription) Subscribe(ctx context.Context) error {
 func (s *simplePushChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
@@ -141,15 +142,20 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("subscription: re-subscription success")
+		s.logger.Print("re-subscription success")
 
 		return nil
 	}
 
-	return err
+	if err != nil {
+		return s.e.ErrorOnly(err)
+	}
+
+	return nil
 }
 
 func newSimplePushSubscriptionService(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
 	handler func(msg *nats.Msg),
@@ -171,5 +177,6 @@ func newSimplePushSubscriptionService(loggerFactorySvc loggerService,
 				natsFunctionalUnitTag: natsSimpleSubscriptionUnitNameTag,
 				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
 			}),
+		e: errFormatterSvc,
 	}
 }

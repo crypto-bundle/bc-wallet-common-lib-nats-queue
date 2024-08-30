@@ -99,6 +99,7 @@ func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 }
 
 func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
@@ -111,7 +112,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 		handler: handler,
 	}
 
-	subscriptionSvc := newSimplePushSubscriptionService(loggerFactorySvc, natsConn,
+	subscriptionSvc := newSimplePushSubscriptionService(loggerFactorySvc, errFormatterSvc, natsConn,
 		consumerCfg, workerWrapper.ProcessMsg)
 
 	worker := &simpleConsumerSingeWorker{

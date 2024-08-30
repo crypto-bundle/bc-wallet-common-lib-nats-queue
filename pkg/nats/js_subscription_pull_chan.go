@@ -126,7 +126,7 @@ func (s *jsPullChanSubscription) Init(ctx context.Context) error {
 func (s *jsPullChanSubscription) Subscribe(ctx context.Context) error {
 	subs, err := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS pull subscription")
 	}
 
 	s.natsSubs = subs
@@ -210,7 +210,11 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	return s.e.ErrorOnly(err)
+	if err != nil {
+		return s.e.ErrorOnly(err)
+	}
+
+	return nil
 }
 
 func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,

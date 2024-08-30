@@ -107,7 +107,7 @@ func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 func (s *jsPushSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -166,7 +166,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 		return s.e.ErrorOnly(err)
 	}
 
-	return err
+	return nil
 }
 
 func newJsPushSubscriptionService(loggerFactorySvc loggerService,

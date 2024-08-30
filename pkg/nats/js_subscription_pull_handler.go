@@ -210,7 +210,11 @@ func (s *jsPullHandlerSubscription) tryResubscribe() error {
 		return nil
 	}
 
-	return err
+	if err != nil {
+		return s.e.ErrorOnly(err)
+	}
+
+	return nil
 }
 
 func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,

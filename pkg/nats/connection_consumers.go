@@ -128,7 +128,7 @@ func (c *Connection) NewSimpleConsumerSingleWorker(consumerCfg consumerConfigQue
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerSingeWorker(c.stdLoggerFactory, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerSingeWorker(c.stdLoggerFactory, c.e, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++
