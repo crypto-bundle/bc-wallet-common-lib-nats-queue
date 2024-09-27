@@ -62,7 +62,7 @@ type jsPushQueueGroupChanSubscription struct {
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	s.jsNatsCtx = jsNatsCtx

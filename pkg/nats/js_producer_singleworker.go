@@ -63,7 +63,7 @@ func (sw *jsProducerSingleWorker) OnReconnect(newConn *nats.Conn) error {
 
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return sw.e.ErrorOnly(err)
 	}
 
 	sw.jsCtx = jsNatsCtx

@@ -39,7 +39,7 @@ func (c *Connection) NewJsConsumerPushQueueGroupSingeWorker(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	worker := NewJsConsumerPushQueueGroupSingeWorker(c.stdLoggerFactory, c.e, c.originConn,
+	worker := NewJsConsumerPushQueueGroupSingeWorker(c.logFactory, c.e, c.originConn,
 		consumerCfg, handler)
 
 	c.consumers = append(c.consumers, worker)
@@ -54,7 +54,7 @@ func (c *Connection) NewJsPullTypeConsumerWorkersPool(consumerCfg consumerConfig
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	workersPool := NewJsPullTypeConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
+	workersPool := NewJsPullTypeConsumerWorkersPool(c.logFactory, c.e, c.originConn,
 		consumerCfg, handler)
 
 	c.consumers = append(c.consumers, workersPool)
@@ -69,7 +69,7 @@ func (c *Connection) NewJsPullTypeConsumerSingleWorker(consumerCfg consumerConfi
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsConsumer := NewJsPullTypeHandlerConsumer(c.stdLoggerFactory, c.e, c.originConn,
+	jsConsumer := NewJsPullTypeHandlerConsumer(c.logFactory, c.e, c.originConn,
 		consumerCfg, handler)
 
 	c.consumers = append(c.consumers, jsConsumer)
@@ -84,7 +84,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerGroupWorkersPool(consumerConfig
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsConsumer := NewJsPushTypeChannelGroupConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
+	jsConsumer := NewJsPushTypeChannelGroupConsumerWorkersPool(c.logFactory, c.e, c.originConn,
 		consumerConfig, handler)
 
 	c.consumers = append(c.consumers, jsConsumer)
@@ -99,7 +99,7 @@ func (c *Connection) NewJsPushTypeChannelConsumerWorkersPool(consumerConfig cons
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	jsConsumer := NewJsPushTypeChannelConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn,
+	jsConsumer := NewJsPushTypeChannelConsumerWorkersPool(c.logFactory, c.e, c.originConn,
 		consumerConfig, handler)
 
 	c.consumers = append(c.consumers, jsConsumer)
@@ -114,7 +114,7 @@ func (c *Connection) NewSimpleConsumerWorkersPool(consumerCfg consumerConfigQueu
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerWorkersPool(c.stdLoggerFactory, c.e, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerWorkersPool(c.logFactory, c.e, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++
@@ -128,7 +128,7 @@ func (c *Connection) NewSimpleConsumerSingleWorker(consumerCfg consumerConfigQue
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	simpleConsumer := NewSimpleConsumerSingeWorker(c.stdLoggerFactory, c.e, c.originConn, consumerCfg, handler)
+	simpleConsumer := NewSimpleConsumerSingeWorker(c.logFactory, c.e, c.originConn, consumerCfg, handler)
 
 	c.consumers = append(c.consumers, simpleConsumer)
 	c.consumerCounter++

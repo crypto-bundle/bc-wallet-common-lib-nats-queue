@@ -70,7 +70,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("error: unable to call onClosed callback", err)
+		wp.logger.Error("unable to call onClosed callback", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -102,7 +102,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("error: unable to unSubscribe", err)
+			wp.logger.Error("unable to unSubscribe", err)
 		}
 	}()
 

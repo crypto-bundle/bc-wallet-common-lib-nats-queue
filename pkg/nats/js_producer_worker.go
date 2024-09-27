@@ -43,7 +43,9 @@ type ProducerWorkerTask func(msg nats.Msg) error
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	l          *slog.Logger
+	l *slog.Logger
+	e errorFormatterService
+
 	msgChannel <-chan *nats.Msg
 
 	streamName string
@@ -90,7 +92,7 @@ func (ww *jsProducerWorkerWrapper) PublishMsg(v *nats.Msg) error {
 func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	pubAck, err := ww.natsProducerConn.PublishMsg(v)
 	if err != nil {
-		return err
+		return ww.e.ErrorOnly(err)
 	}
 
 	if pubAck == nil {

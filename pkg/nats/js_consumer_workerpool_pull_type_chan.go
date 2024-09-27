@@ -51,6 +51,7 @@ type jsPullTypeChannelConsumerWorkerPool struct {
 	workers []*jsConsumerWorkerWrapper
 
 	l *slog.Logger
+	e errorFormatterService
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -106,7 +107,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Healthcheck(ctx context.Context) 
 func (wp *jsPullTypeChannelConsumerWorkerPool) Init(ctx context.Context) error {
 	err := wp.pullSubscriber.Init(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorOnly(err)
 	}
 
 	return nil
@@ -121,7 +122,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.pullSubscriber.Subscribe(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorOnly(err)
 	}
 
 	go func() {

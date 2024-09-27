@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -48,7 +48,7 @@ type simpleConsumerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *log.Logger
+	l *slog.Logger
 }
 
 func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -57,7 +57,7 @@ func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("consumer: unable to call onClosed in simple producer pool unit - %e", loopErr)
+			wp.l.Error("unable to call onClosed in simple producer pool unit", loopErr)
 
 			err = loopErr
 		}
@@ -104,7 +104,7 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.subscriptionSrv.Subscribe(ctx)
 	if err != nil {
-		wp.logger.Printf("error: unable to subscribe - %e", err)
+		wp.l.Error("unable to subscribe", err)
 	}
 
 	go func() {
@@ -113,17 +113,17 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 		err = wp.subscriptionSrv.UnSubscribe()
 		if err != nil {
 			if err != nil {
-				wp.logger.Printf("error: unable to unSubscribe - %e", err)
+				wp.l.Error("error: unable to unSubscribe", err)
 			}
 		}
 
-		wp.logger.Printf("successfully unSubscribed")
+		wp.l.Info("successfully unSubscribed")
 	}()
 
 	return nil
 }
 
-func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
+func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
@@ -131,15 +131,15 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 ) *simpleConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSvc := newSimplePushQueueGroupSubscriptionService(loggerFactorySvc, errFormatterSvc, natsConn,
+	subscriptionSvc := newSimplePushQueueGroupSubscriptionService(logFactorySvc, errFormatterSvc, natsConn,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
 		handler: handler,
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
-			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-		}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+		),
 		workers:         nil,
 		subscriptionSrv: subscriptionSvc,
 
@@ -150,11 +150,11 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 		workerWrapper := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			l: loggerFactorySvc.WithFields(map[string]interface{}{
-				natsFunctionalUnitTag: natsWorkerNameTag,
-				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-				workerUnitNumberTag:   i,
-			}),
+			l: logFactorySvc.NewSlogLoggerEntryWithFields(
+				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+				slog.Int(workerUnitNumberTag, int(i)),
+			),
 		}
 
 		workersPool.workers = append(workersPool.workers, workerWrapper)

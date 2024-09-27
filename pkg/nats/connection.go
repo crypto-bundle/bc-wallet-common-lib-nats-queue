@@ -49,9 +49,10 @@ type Connection struct {
 	cfg     configParams
 	options []nats.Option
 
-	stdLoggerFactory loggerService
-	logger           *slog.Logger
-	e                errorFormatterService
+	logFactory loggerService
+
+	l *slog.Logger
+	e errorFormatterService
 
 	addresses []string
 
@@ -117,13 +118,13 @@ func (c *Connection) GetConnection() *nats.Conn {
 func (c *Connection) Close() error {
 	c.originConn.Close()
 
-	c.logger.Info("nats connection successfully closed")
+	c.l.Info("nats connection successfully closed")
 
 	return nil
 }
 
 func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
-	c.logger.Error("received on DisconnectErr event - calling OnDisconnect on all consumers/producers", err)
+	c.l.Error("received on DisconnectErr event - calling OnDisconnect on all consumers/producers", err)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -131,7 +132,7 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnDisconnect(conn, err)
 		if producerErr != nil {
-			c.logger.Error("unable to call onDisconnect on producer", producerErr,
+			c.l.Error("unable to call onDisconnect on producer", producerErr,
 				slog.Uint64(ProducerIndex, uint64(i)))
 		}
 	}
@@ -139,14 +140,14 @@ func (c *Connection) onDisconnect(conn *nats.Conn, err error) {
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnDisconnect(conn, err)
 		if consumerErr != nil {
-			c.logger.Error("unable to call onDisconnect on consumer", consumerErr,
+			c.l.Error("unable to call onDisconnect on consumer", consumerErr,
 				slog.Uint64(ConsumerIndex, uint64(i)))
 		}
 	}
 }
 
 func (c *Connection) onClosed(newConn *nats.Conn) {
-	c.logger.Error("received onClosed event - calling OnClosed on all consumers/producers")
+	c.l.Error("received onClosed event - calling OnClosed on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -154,7 +155,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnClosed(newConn)
 		if producerErr != nil {
-			c.logger.Error("unable to call onClosed on producer", producerErr,
+			c.l.Error("unable to call onClosed on producer", producerErr,
 				slog.Uint64(ProducerIndex, uint64(i)))
 		}
 	}
@@ -162,7 +163,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnClosed(newConn)
 		if consumerErr != nil {
-			c.logger.Error("unable to call onClosed on consumer", consumerErr,
+			c.l.Error("unable to call onClosed on consumer", consumerErr,
 				slog.Uint64(ConsumerIndex, uint64(i)))
 		}
 	}
@@ -171,7 +172,7 @@ func (c *Connection) onClosed(newConn *nats.Conn) {
 func (c *Connection) onReconnect(newConn *nats.Conn) {
 	c.originConn = newConn
 
-	c.logger.Error("received on OnReconnect event - calling OnReconnect on all consumers/producers")
+	c.l.Error("received on OnReconnect event - calling OnReconnect on all consumers/producers")
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -179,7 +180,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 	for i := uint(0); i != c.producersCounter; i++ {
 		producerErr := c.producers[i].OnReconnect(newConn)
 		if producerErr != nil {
-			c.logger.Error("unable to call onReconnect on producer", producerErr,
+			c.l.Error("unable to call onReconnect on producer", producerErr,
 				slog.Uint64(ProducerIndex, uint64(i)))
 		}
 	}
@@ -187,7 +188,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 	for i := uint(0); i != c.consumerCounter; i++ {
 		consumerErr := c.consumers[i].OnReconnect(newConn)
 		if consumerErr != nil {
-			c.logger.Error("unable to call onReconnect on consumer", consumerErr,
+			c.l.Error("unable to call onReconnect on consumer", consumerErr,
 				slog.Uint64(ConsumerIndex, uint64(i)))
 		}
 	}
@@ -195,7 +196,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 
 // NewConnection nats originConn instance
 func NewConnection(cfg configParams,
-	loggerFactorySvc loggerService,
+	logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 ) *Connection {
 	options := make([]nats.Option, 0)
@@ -211,8 +212,8 @@ func NewConnection(cfg configParams,
 	conn := &Connection{
 		mu: sync.Mutex{},
 
-		stdLoggerFactory: loggerFactorySvc,
-		logger: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+		logFactory: logFactorySvc,
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsConnectionUnitNameTag),
 		),
 		e:          errFormatterSvc,

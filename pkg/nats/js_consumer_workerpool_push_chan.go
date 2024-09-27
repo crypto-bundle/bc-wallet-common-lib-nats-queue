@@ -49,6 +49,7 @@ type jsPushTypeChannelConsumerWorkerPool struct {
 	msgChannel chan *nats.Msg
 
 	logger *slog.Logger
+	e      errorFormatterService
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -72,7 +73,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	wp.handler = nil
 	wp.subscriptionSvc = nil
 
-	return err
+	return wp.e.ErrorOnly(err)
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {

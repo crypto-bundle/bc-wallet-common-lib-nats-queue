@@ -69,7 +69,7 @@ func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
 func (s *jsPushSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	s.jsNatsCtx = jsNatsCtx
