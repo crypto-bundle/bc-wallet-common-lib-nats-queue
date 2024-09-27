@@ -61,7 +61,7 @@ func (c *Connection) NewJsProducerWorkersPool(workersCount uint32,
 	workers := make([]*jsProducerWorkerWrapper, workersCount)
 
 	for i := range workersCount {
-		ww := newJsProducerWorker(c.logFactory, i,
+		ww := newJsProducerWorker(c.logFactory, c.e, i,
 			msgChannel, streamName,
 			subjects)
 
@@ -87,7 +87,7 @@ func (c *Connection) NewSimpleProducerWorkersPool(
 	msgChannel := make(chan *nats.Msg, workersCount)
 	workers := make([]*producerWorkerWrapper, workersCount)
 
-	for i := uint32(0); i < workersCount; i++ {
+	for i := range workersCount {
 		ww := newProducerWorker(c.logFactory, c.e, i,
 			msgChannel, subjectName,
 			c.originConn)

@@ -105,6 +105,7 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 }
 
 func newJsProducerWorker(logFactorySvc loggerService,
+	errFmtSvc errorFormatterService,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
@@ -114,6 +115,7 @@ func newJsProducerWorker(logFactorySvc loggerService,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsJetStreamProducerUnitNameTag),
 		),
+		e:                errFmtSvc,
 		msgChannel:       msgChannel,
 		streamName:       streamName,
 		subjects:         subjects,

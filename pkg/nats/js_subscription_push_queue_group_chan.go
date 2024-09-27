@@ -41,22 +41,21 @@ import (
 )
 
 type jsPushQueueGroupChanSubscription struct {
-	natsSubs  *nats.Subscription
-	natsConn  *nats.Conn
-	jsNatsCtx nats.JetStreamContext
-
-	subjectName    string
-	queueGroupName string
-
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
-
-	msgChannel chan *nats.Msg
-
 	l *slog.Logger
 	e errorFormatterService
+
+	subscribeNatsOptions []nats.SubOpt
+	jsNatsCtx            nats.JetStreamContext
+	subjectName          string
+	queueGroupName       string
+
+	natsSubs   *nats.Subscription
+	natsConn   *nats.Conn
+	msgChannel chan *nats.Msg
+
+	autoReSubscribeTimeout time.Duration
+	autoReSubscribeCount   int
+	autoReSubscribe        bool
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -148,12 +147,12 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 	var err error = nil
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 

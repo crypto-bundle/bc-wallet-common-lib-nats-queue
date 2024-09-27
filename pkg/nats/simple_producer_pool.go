@@ -40,7 +40,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// simpleProducerWorkerPool is a minimal Worker implementation that simply wraps a
+// simpleProducerWorkerPool is a minimal Worker implementation that simply wraps...
 type simpleProducerWorkerPool struct {
 	l *slog.Logger
 	e errorFormatterService
@@ -57,8 +57,8 @@ type simpleProducerWorkerPool struct {
 func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
 			wp.l.Error("unable to call onClosed callback in consumer worker pool unit",
 				loopErr)
@@ -66,7 +66,7 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 			err = loopErr
 		}
 
-		wp.workers[i] = nil
+		wp.workers[index] = nil
 	}
 
 	wp.natsProducerConn = nil
@@ -96,12 +96,12 @@ func (wp *simpleProducerWorkerPool) Run(ctx context.Context) error {
 }
 
 func (wp *simpleProducerWorkerPool) run(ctx context.Context) {
-	for i, _ := range wp.workers {
-		go wp.workers[i].Run(ctx)
+	for index := range wp.workers {
+		go wp.workers[index].Run(ctx)
 	}
 }
 
-func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+func (wp *simpleProducerWorkerPool) Healthcheck(_ context.Context) bool {
 	if !wp.natsProducerConn.IsConnected() {
 		wp.l.Warn("lost NATS origin connection")
 

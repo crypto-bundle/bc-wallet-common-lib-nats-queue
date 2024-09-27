@@ -39,12 +39,12 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps a
+// simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps...
 type simpleConsumerSingeWorker struct {
+	l *slog.Logger
+
 	subscriptionSvc subscriptionService
 	worker          *consumerWorkerWrapper
-
-	l *slog.Logger
 }
 
 func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -68,7 +68,7 @@ func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) er
 func (wp *simpleConsumerSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.l.Error("unable to call onClosed callbac", err)
+		wp.l.Error("unable to call onClosed callback", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -105,11 +105,11 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 	handler consumerHandler,
 ) *simpleConsumerSingeWorker {
 	workerWrapper := &consumerWorkerWrapper{
-		msgChannel: nil, // cuz channel-less single-worker worker pool
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsSimpleConsumerWorkerUnitNameTag),
 		),
-		handler: handler,
+		msgChannel: nil, // cuz channel-less single-worker worker pool
+		handler:    handler,
 	}
 
 	subscriptionSvc := newSimplePushSubscriptionService(loggerFactorySvc, errFormatterSvc, natsConn,

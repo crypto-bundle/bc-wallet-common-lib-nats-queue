@@ -39,30 +39,29 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps a
+// simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps...
 type simpleConsumerWorkerPool struct {
-	handler consumerHandler
-	workers []*consumerWorkerWrapper
+	l *slog.Logger
 
+	handler         consumerHandler
 	subscriptionSrv subscriptionService
 
 	msgChannel chan *nats.Msg
-
-	l *slog.Logger
+	workers    []*consumerWorkerWrapper
 }
 
 func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
 			wp.l.Error("unable to call onClosed in simple producer pool unit", loopErr)
 
 			err = loopErr
 		}
 
-		wp.workers[i] = nil
+		wp.workers[index] = nil
 	}
 
 	close(wp.msgChannel)
@@ -146,14 +145,14 @@ func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 		msgChannel: msgChannel,
 	}
 
-	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
+	for index := range consumerCfg.GetWorkersCount() {
 		workerWrapper := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
 			l: logFactorySvc.NewSlogLoggerEntryWithFields(
 				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
-				slog.Int(workerUnitNumberTag, int(i)),
+				slog.Int(workerUnitNumberTag, int(index)),
 			),
 		}
 

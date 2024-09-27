@@ -108,8 +108,7 @@ func newProducerWorker(loggerFactorySvc loggerService,
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsSimpleProducerWorkerUnitNameTag),
 		),
-		e: errFormatterSvc,
-		
+		e:                errFormatterSvc,
 		msgChannel:       msgChannel,
 		subject:          subject,
 		natsProducerConn: natsProducerConn,

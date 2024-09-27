@@ -40,7 +40,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// jsProducerWorkerPool is a minimal Worker implementation that simply wraps a
+// jsProducerWorkerPool is a minimal Worker implementation that simply wraps...
 type jsProducerWorkerPool struct {
 	l *slog.Logger
 	e errorFormatterService
@@ -56,15 +56,15 @@ type jsProducerWorkerPool struct {
 }
 
 func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
 			wp.l.Error("unable to call onClosed callback in producer worker pool unit", loopErr)
 
 			return loopErr
 		}
 
-		wp.workers[i] = nil
+		wp.workers[index] = nil
 	}
 
 	wp.natsConn = nil
@@ -109,8 +109,8 @@ func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
 
 	wp.jsNatsCtx = jsNatsCtx
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].Init(ctx, jsNatsCtx)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].Init(ctx, jsNatsCtx)
 		if loopErr != nil {
 			return loopErr
 		}
@@ -120,8 +120,8 @@ func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
 }
 
 func (wp *jsProducerWorkerPool) Run(ctx context.Context) error {
-	for i, _ := range wp.workers {
-		go wp.workers[i].Run(ctx)
+	for index := range wp.workers {
+		go wp.workers[index].Run(ctx)
 	}
 
 	return nil

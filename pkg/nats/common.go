@@ -65,7 +65,7 @@ type consumerConfig interface {
 	GetSubjectName() string
 
 	IsAutoReSubscribeEnabled() bool
-	GetAutoResubscribeCount() uint16
+	GetAutoResubscribeCount() int
 	GetAutoResubscribeDelay() time.Duration
 
 	GetNakDelayTimings() []time.Duration

@@ -41,11 +41,11 @@ import (
 
 // consumerWorkerWrapper ...
 type consumerWorkerWrapper struct {
+	l *slog.Logger
+
 	msgChannel <-chan *nats.Msg
 
 	handler consumerHandler
-
-	l *slog.Logger
 }
 
 func (ww *consumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
@@ -70,6 +70,7 @@ func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
 				return
 			}
 
+			//nolint:contextcheck //it's ok here, we must play with new empty context
 			ww.processMsg(context.Background(), natsMsg)
 		}
 	}

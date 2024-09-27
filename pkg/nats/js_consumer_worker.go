@@ -42,11 +42,11 @@ import (
 
 // jsConsumerWorkerWrapper ...
 type jsConsumerWorkerWrapper struct {
+	l *slog.Logger
+
 	msgChannel <-chan *nats.Msg
 
 	handler consumerHandler
-
-	l *slog.Logger
 
 	reQueueDelayCount uint64
 	reQueueDelay      []time.Duration
@@ -74,7 +74,8 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 				return
 			}
 
-			ww.processMsg(context.TODO(), natsMsg)
+			//nolint:contextcheck //it's ok here, we must play with new empty context
+			ww.processMsg(context.Background(), natsMsg)
 		}
 	}
 }

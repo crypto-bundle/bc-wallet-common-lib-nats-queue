@@ -39,32 +39,31 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// jsPullTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
+// jsPullTypeChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps...
 type jsPullTypeChannelConsumerWorkerPool struct {
+	l *slog.Logger
+	e errorFormatterService
+
 	msgChannel chan *nats.Msg
 
 	subjectName string
 
 	pullSubscriber subscriptionService
-
-	handler consumerHandler
-	workers []*jsConsumerWorkerWrapper
-
-	l *slog.Logger
-	e errorFormatterService
+	handler        consumerHandler
+	workers        []*jsConsumerWorkerWrapper
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
 			wp.l.Error("unable to call onClosed callback in consumer worker pool unit",
 				loopErr)
 		}
 
-		wp.workers[i] = nil
+		wp.workers[index] = nil
 	}
 
 	wp.handler = nil
@@ -149,11 +148,12 @@ func NewJsPullTypeConsumerWorkersPool(logFactorySvc loggerService,
 		natsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
-		handler: handler,
+		e: errFormatterSvc,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
 			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
 		),
+		handler:        handler,
 		msgChannel:     msgChannel,
 		subjectName:    consumerCfg.GetSubjectName(),
 		pullSubscriber: pullSubscriber,
@@ -162,14 +162,14 @@ func NewJsPullTypeConsumerWorkersPool(logFactorySvc loggerService,
 
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
-	for i := range consumerCfg.GetWorkersCount() {
+	for index := range consumerCfg.GetWorkersCount() {
 		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
 			l: logFactorySvc.NewSlogLoggerEntryWithFields(
 				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 				slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
-				slog.Int(workerUnitNumberTag, int(i)),
+				slog.Int(workerUnitNumberTag, int(index)),
 			),
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),

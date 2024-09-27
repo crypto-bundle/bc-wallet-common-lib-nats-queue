@@ -34,18 +34,19 @@ package nats
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
 	"log/slog"
+
+	"github.com/nats-io/nats.go"
 )
 
-// jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps
+// jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps...
 type jsPullTypeHandlerConsumer struct {
+	l *slog.Logger
+	e errorFormatterService
+
 	pullSubscriber subscriptionService
 
 	worker *jsConsumerWorkerWrapper
-
-	l *slog.Logger
-	e errorFormatterService
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
@@ -117,10 +118,10 @@ func NewJsPullTypeHandlerConsumer(logFactorySvc loggerService,
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
 	workerWrapper := &jsConsumerWorkerWrapper{
-		msgChannel: nil, // cuz channel-less single-worker worker pool
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsJetStreamConsumerUnitNameTag),
 		),
+		msgChannel:        nil, // cuz channel-less single-worker worker pool
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
@@ -130,11 +131,12 @@ func NewJsPullTypeHandlerConsumer(logFactorySvc loggerService,
 		consumerCfg, workerWrapper.ProcessMsg)
 
 	return &jsPullTypeHandlerConsumer{
-		pullSubscriber: pullSubscriber,
-		worker:         workerWrapper,
+		e: errFormatterSvc,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 			slog.String(natsConsumerTypeTag, natsPullTypeQueueGroupConsumerNameTag),
 		),
+		pullSubscriber: pullSubscriber,
+		worker:         workerWrapper,
 	}
 }

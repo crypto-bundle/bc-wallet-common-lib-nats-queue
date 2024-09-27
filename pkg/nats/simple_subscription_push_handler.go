@@ -41,19 +41,19 @@ import (
 )
 
 type simplePushChanSubscription struct {
+	l *slog.Logger
+	e errorFormatterService
+
 	natsSubs *nats.Subscription
 	natsConn *nats.Conn
 
-	subjectName string
-
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
-
 	handler func(msg *nats.Msg)
 
-	l *slog.Logger
-	e errorFormatterService
+	subjectName string
+
+	autoReSubscribeTimeout time.Duration
+	autoReSubscribeCount   int
+	autoReSubscribe        bool
 }
 
 func (s *simplePushChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -127,11 +127,11 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 	var err error
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 

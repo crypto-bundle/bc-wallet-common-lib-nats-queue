@@ -42,28 +42,27 @@ import (
 )
 
 type jsPullHandlerSubscription struct {
-	natsSubs    *nats.Subscription
-	natsConn    *nats.Conn
-	jsNatsCtx   nats.JetStreamContext
-	subjectName string
-
-	durableName     string
-	autoReSubscribe bool
-
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
-	fetchInterval          time.Duration
-
-	fetchTimeout time.Duration
-	fetchLimit   uint
-
-	ticker *time.Ticker
-
 	l *slog.Logger
 	e errorFormatterService
 
+	natsSubs  *nats.Subscription
+	natsConn  *nats.Conn
+	jsNatsCtx nats.JetStreamContext
+
+	subjectName string
+	durableName string
+
+	ticker *time.Ticker
+
 	handler func(msg *nats.Msg)
+
+	autoReSubscribeCount   int
+	autoReSubscribeTimeout time.Duration
+	subscribeNatsOptions   []nats.SubOpt
+	fetchInterval          time.Duration
+	fetchTimeout           time.Duration
+	fetchLimit             uint
+	autoReSubscribe        bool
 }
 
 func (s *jsPullHandlerSubscription) OnClosed(conn *nats.Conn) error {
@@ -97,7 +96,7 @@ func (s *jsPullHandlerSubscription) OnDisconnect(conn *nats.Conn, err error) err
 	return s.onDisconnect(conn, err)
 }
 
-func (s *jsPullHandlerSubscription) Healthcheck(_ context.Context) bool {
+func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
 		s.l.Warn("lost NATS origin connection")
 
@@ -163,7 +162,7 @@ func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			if fetchErr != nil && errors.Is(fetchErr, nats.ErrTimeout) {
+			if errors.Is(fetchErr, nats.ErrTimeout) {
 				continue
 			}
 
@@ -190,11 +189,11 @@ func (s *jsPullHandlerSubscription) tryResubscribe() error {
 
 	var err error
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 
@@ -235,6 +234,12 @@ func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,
 	}
 
 	return &jsPullHandlerSubscription{
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+		),
+		e: errFormatterSvc,
+
 		natsConn:  natsConn,
 		jsNatsCtx: nil, // it will be set @ init stage
 		natsSubs:  nil, // it will be set @ run stage
@@ -254,11 +259,5 @@ func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,
 		handler: handler,
 
 		ticker: nil, // it will be set @ Subscribe stage
-
-		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
-		),
-		e: errFormatterSvc,
 	}
 }

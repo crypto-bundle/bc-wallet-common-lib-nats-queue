@@ -41,20 +41,19 @@ import (
 )
 
 type simplePushQueueGroupChanSubscription struct {
-	natsSubs *nats.Subscription
-	natsConn *nats.Conn
+	l *slog.Logger
+	e errorFormatterService
+
+	natsSubs   *nats.Subscription
+	natsConn   *nats.Conn
+	msgChannel chan *nats.Msg
 
 	subjectName string
 	groupName   string
 
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
 	autoReSubscribeTimeout time.Duration
-
-	msgChannel chan *nats.Msg
-
-	l *slog.Logger
-	e errorFormatterService
+	autoReSubscribeCount   int
+	autoReSubscribe        bool
 }
 
 func (s *simplePushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
@@ -128,11 +127,11 @@ func (s *simplePushQueueGroupChanSubscription) tryResubscribe() error {
 
 	var err error
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.natsConn.ChanQueueSubscribe(s.subjectName, s.groupName, s.msgChannel)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 

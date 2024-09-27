@@ -128,7 +128,11 @@ issues:
 linters:
   # Disable all linters.
   # Default: false
-  disable-all: true
+  disable:
+    - execinquery
+    - gofumpt
+    - interfacebloat
+    - tagalign
   # Enable specific linter
   # https://golangci-lint.run/usage/linters/#enabled-by-default
   enable:
@@ -152,7 +156,6 @@ linters:
     - errchkjson
     - errname
     - errorlint
-#    - execinquery
     - exhaustive
     - exhaustruct
     - exportloopref
@@ -173,7 +176,6 @@ linters:
     - godot
     - godox
     - gofmt
-#    - gofumpt
     - goheader
     - goimports
     - gomoddirectives
@@ -187,7 +189,6 @@ linters:
     - importas
     - inamedparam
     - ineffassign
-#    - interfacebloat
     - intrange
     - ireturn
     - lll
@@ -221,7 +222,6 @@ linters:
     - sqlclosecheck
     - staticcheck
     - stylecheck
-    - tagalign
     - tagliatelle
     - tenv
     - testableexamples

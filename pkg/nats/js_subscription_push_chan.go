@@ -41,21 +41,20 @@ import (
 )
 
 type jsPushSubscription struct {
-	natsSubs  *nats.Subscription
-	natsConn  *nats.Conn
-	jsNatsCtx nats.JetStreamContext
+	e errorFormatterService
+	l *slog.Logger
+
+	natsSubs   *nats.Subscription
+	natsConn   *nats.Conn
+	jsNatsCtx  nats.JetStreamContext
+	msgChannel chan *nats.Msg
 
 	subjectName string
 
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
+	autoReSubscribeCount   int
 	autoReSubscribeTimeout time.Duration
 	subscribeNatsOptions   []nats.SubOpt
-
-	msgChannel chan *nats.Msg
-
-	l *slog.Logger
-	e errorFormatterService
+	autoReSubscribe        bool
 }
 
 func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
@@ -142,11 +141,11 @@ func (s *jsPushSubscription) tryResubscribe() error {
 
 	var err error
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			time.Sleep(s.autoReSubscribeTimeout)
 
@@ -188,6 +187,12 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 	}
 
 	return &jsPushSubscription{
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+		),
+		e: errFormatterSvc,
+
 		natsConn:  natsConn,
 		natsSubs:  nil, // it will be set @ run stage
 		jsNatsCtx: nil, // it will be set @ init stage
@@ -200,10 +205,5 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
-		),
-		e: errFormatterSvc,
 	}
 }

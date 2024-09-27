@@ -39,14 +39,14 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// jsPushTypeQueueGroupConsumer is a minimal Worker implementation that simply wraps a
+// jsPushTypeQueueGroupConsumer is a minimal Worker implementation that simply wraps...
 type jsConsumerPushQueueGroupSingeWorker struct {
+	l *slog.Logger
+	e errorFormatterService
+
 	subscriptionSvc subscriptionService
 
 	worker *jsConsumerWorkerWrapper
-
-	logger *slog.Logger
-	e      errorFormatterService
 }
 
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -70,7 +70,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Error("unable to call onClosed callback", err)
+		wp.l.Error("unable to call onClosed callback", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -102,7 +102,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", err)
+			wp.l.Error("unable to unSubscribe", err)
 		}
 	}()
 
@@ -132,7 +132,8 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 		workerWrapper.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+		e: errFormatterSvc,
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
 		),

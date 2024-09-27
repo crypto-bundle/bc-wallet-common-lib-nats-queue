@@ -48,15 +48,16 @@ type jsPushQueueGroupHandlerSubscription struct {
 	subjectName    string
 	queueGroupName string
 
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
-
 	handler func(msg *nats.Msg)
 
 	l *slog.Logger
 	e errorFormatterService
+
+	subscribeNatsOptions []nats.SubOpt
+
+	autoReSubscribeTimeout time.Duration
+	autoReSubscribeCount   int
+	autoReSubscribe        bool
 }
 
 func (s *jsPushQueueGroupHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -145,12 +146,12 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 
 	var err error = nil
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
 			s.handler, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 

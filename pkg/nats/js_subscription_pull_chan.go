@@ -42,6 +42,9 @@ import (
 )
 
 type jsPullChanSubscription struct {
+	l *slog.Logger
+	e errorFormatterService
+
 	msgChannel chan *nats.Msg
 	natsSubs   *nats.Subscription
 	natsConn   *nats.Conn
@@ -50,19 +53,16 @@ type jsPullChanSubscription struct {
 	subjectName string
 	durableName string
 
-	autoReSubscribe      bool
-	autoReSubscribeCount uint16
-	autoReSubscribeDelay time.Duration
-	subscribeNatsOptions []nats.SubOpt
+	ticker *time.Ticker
 
 	fetchInterval time.Duration
 	fetchTimeout  time.Duration
 	fetchLimit    uint
 
-	ticker *time.Ticker
-
-	l *slog.Logger
-	e errorFormatterService
+	autoReSubscribeCount int
+	autoReSubscribeDelay time.Duration
+	subscribeNatsOptions []nats.SubOpt
+	autoReSubscribe      bool
 }
 
 func (s *jsPullChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -163,7 +163,7 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			if fetchErr != nil && errors.Is(fetchErr, nats.ErrTimeout) {
+			if errors.Is(fetchErr, nats.ErrTimeout) {
 				continue
 			}
 
@@ -190,11 +190,11 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 	var err error
 
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
 			s.l.Error("unable to re-subscribe", subsErr,
-				slog.Int(ResubscribeTag, int(i)))
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 
@@ -235,6 +235,12 @@ func newJsPullChanSubscriptionService(logFactorySvc loggerService,
 	}
 
 	return &jsPullChanSubscription{
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+		),
+		e: errFormatterSvc,
+
 		natsConn:  natsConn,
 		natsSubs:  nil, // it will be set @ run stage
 		jsNatsCtx: nil, // it will be set @ init stage
@@ -254,11 +260,5 @@ func newJsPullChanSubscriptionService(logFactorySvc loggerService,
 		msgChannel: msgChannel,
 
 		ticker: nil, // it will be set @ Subscribe stage
-
-		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
-		),
-		e: errFormatterSvc,
 	}
 }

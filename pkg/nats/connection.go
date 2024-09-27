@@ -194,7 +194,7 @@ func (c *Connection) onReconnect(newConn *nats.Conn) {
 	}
 }
 
-// NewConnection nats originConn instance
+// NewConnection nats originConn instance...
 func NewConnection(cfg configParams,
 	logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
