@@ -34,15 +34,15 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
 
 // jsProducerSingleWorker ...
 type jsProducerSingleWorker struct {
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 
 	streamName string
 	subjects   []string
@@ -80,7 +80,7 @@ func (sw *jsProducerSingleWorker) OnDisconnect(
 
 func (sw *jsProducerSingleWorker) Healthcheck(_ context.Context) bool {
 	if !sw.natsProducerConn.IsConnected() {
-		sw.logger.Print("lost NATS origin connection")
+		sw.l.Warn("lost NATS origin connection")
 
 		return false
 	}
@@ -106,14 +106,14 @@ func (sw *jsProducerSingleWorker) Run(_ context.Context) error {
 func (sw *jsProducerSingleWorker) Produce(ctx context.Context, msg *nats.Msg) {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Printf("error: unable to produce nats message - %e", err)
+		sw.l.Error("unable to produce nats message", err)
 	}
 }
 
 func (sw *jsProducerSingleWorker) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	err := sw.produce(ctx, msg)
 	if err != nil {
-		sw.logger.Printf("error: unable to produce nats message - %e", err)
+		sw.l.Error("unable to produce nats message", err)
 
 		return err
 	}
@@ -128,8 +128,7 @@ func (sw *jsProducerSingleWorker) produce(_ context.Context, msg *nats.Msg) erro
 	}
 
 	if pubAck == nil {
-		sw.logger.Printf("error: %s - %e",
-			"received nil pubAck", ErrNilPubAck)
+		sw.l.Error("received nil pubAck", ErrNilPubAck)
 
 		return ErrNilPubAck
 	}
@@ -144,10 +143,9 @@ func NewJsProducerSingleWorkerService(loggerFactorySvc loggerService,
 	subjects []string,
 ) *jsProducerSingleWorker {
 	workersPool := &jsProducerSingleWorker{
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamProducerUnitNameTag,
-			}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamProducerUnitNameTag),
+		),
 		e:                errFormatterSvc,
 		streamName:       streamName,
 		subjects:         subjects,

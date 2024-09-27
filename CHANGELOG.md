@@ -1,8 +1,11 @@
 # Change Log
 
 ## [v0.1.13]
+### Added
+* Added slog.Logger dependency from golang standard library
 ### Changed
 * Changed MIT License to NON-AI MIT
+* Removed log.Logger dependency
 * Removed zap.Logger dependency
 
 ## [v0.1.12] - 17.04.2024

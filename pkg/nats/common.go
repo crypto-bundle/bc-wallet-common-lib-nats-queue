@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -116,8 +116,9 @@ type consumerService interface {
 }
 
 type loggerService interface {
-	NamedWithFields(name string, fields map[string]interface{}) *log.Logger
-	WithFields(fields map[string]interface{}) *log.Logger
+	NewSlogLoggerEntry(fields ...any) *slog.Logger
+	NewSlogNamedLoggerEntry(named string, fields ...any) *slog.Logger
+	NewSlogLoggerEntryWithFields(fields ...slog.Attr) *slog.Logger
 }
 
 type producerService interface {

@@ -34,9 +34,8 @@ package nats
 
 import (
 	"context"
-	"log"
-
 	"github.com/nats-io/nats.go"
+	"log/slog"
 )
 
 // jsPullTypeHandlerConsumer is a minimal Worker implementation that simply wraps
@@ -45,13 +44,14 @@ type jsPullTypeHandlerConsumer struct {
 
 	worker *jsConsumerWorkerWrapper
 
-	logger *log.Logger
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
 	err := wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("error: unable to call onClosed callbac - %e", err)
+		wp.l.Error("unable to call onClosed callback", err)
 	}
 
 	wp.pullSubscriber = nil
@@ -101,14 +101,14 @@ func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 
 		err = wp.pullSubscriber.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("error: unable to unSubscribe - %e", err)
+			wp.l.Error("unable to unSubscribe", err)
 		}
 	}()
 
 	return nil
 }
 
-func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
+func NewJsPullTypeHandlerConsumer(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	jsNatsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
@@ -118,23 +118,23 @@ func NewJsPullTypeHandlerConsumer(loggerFactorySvc loggerService,
 
 	workerWrapper := &jsConsumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
-		}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamConsumerUnitNameTag),
+		),
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
 	}
 
-	pullSubscriber := newJsPullHandlerSubscriptionService(loggerFactorySvc, errFormatterSvc, jsNatsConn,
+	pullSubscriber := newJsPullHandlerSubscriptionService(logFactorySvc, errFormatterSvc, jsNatsConn,
 		consumerCfg, workerWrapper.ProcessMsg)
 
 	return &jsPullTypeHandlerConsumer{
 		pullSubscriber: pullSubscriber,
 		worker:         workerWrapper,
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsWorkerNameTag,
-			natsConsumerTypeTag:   natsPullTypeQueueGroupConsumerNameTag,
-		}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeQueueGroupConsumerNameTag),
+		),
 	}
 }

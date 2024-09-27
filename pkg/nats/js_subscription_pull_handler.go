@@ -35,7 +35,7 @@ package nats
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -60,8 +60,8 @@ type jsPullHandlerSubscription struct {
 
 	ticker *time.Ticker
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 
 	handler func(msg *nats.Msg)
 }
@@ -97,15 +97,15 @@ func (s *jsPullHandlerSubscription) OnDisconnect(conn *nats.Conn, err error) err
 	return s.onDisconnect(conn, err)
 }
 
-func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
+func (s *jsPullHandlerSubscription) Healthcheck(_ context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("subscription: lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("subscription: lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -113,7 +113,7 @@ func (s *jsPullHandlerSubscription) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (s *jsPullHandlerSubscription) Init(ctx context.Context) error {
+func (s *jsPullHandlerSubscription) Init(_ context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
 		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
@@ -167,10 +167,10 @@ func (s *jsPullHandlerSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			s.logger.Printf("unable fetch data - %e", fetchErr)
+			s.l.Error("unable fetch data", fetchErr)
 
 		case <-ctx.Done():
-			s.logger.Print("received close message")
+			s.l.Info("received close message")
 
 			return
 		}
@@ -193,8 +193,8 @@ func (s *jsPullHandlerSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("subscription: unable to re-subscribe - %s: %d, error: %e",
-				ResubscribeTag, i, subsErr)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			err = subsErr
 
@@ -205,7 +205,7 @@ func (s *jsPullHandlerSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("subscription: re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -255,11 +255,10 @@ func newJsPullHandlerSubscriptionService(loggerFactorySvc loggerService,
 
 		ticker: nil, // it will be set @ Subscribe stage
 
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-			}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

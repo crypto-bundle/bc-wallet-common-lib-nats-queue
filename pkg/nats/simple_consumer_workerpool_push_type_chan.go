@@ -150,7 +150,7 @@ func NewSimpleConsumerWorkersPool(loggerFactorySvc loggerService,
 		workerWrapper := &consumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger: loggerFactorySvc.WithFields(map[string]interface{}{
+			l: loggerFactorySvc.WithFields(map[string]interface{}{
 				natsFunctionalUnitTag: natsWorkerNameTag,
 				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
 				workerUnitNumberTag:   i,

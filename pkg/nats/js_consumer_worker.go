@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -46,7 +46,7 @@ type jsConsumerWorkerWrapper struct {
 
 	handler consumerHandler
 
-	logger *log.Logger
+	l *slog.Logger
 
 	reQueueDelayCount uint64
 	reQueueDelay      []time.Duration
@@ -63,13 +63,13 @@ func (ww *jsConsumerWorkerWrapper) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			ww.logger.Print("received close worker message")
+			ww.l.Info("received close worker message")
 
 			return
 
 		case natsMsg, ok := <-ww.msgChannel:
 			if !ok {
-				ww.logger.Print("nats message channel is closed")
+				ww.l.Info("nats message channel is closed")
 
 				return
 			}
@@ -86,21 +86,21 @@ func (ww *jsConsumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
 func (ww *jsConsumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
 	msgMetaData, err := msg.Metadata()
 	if err != nil {
-		ww.logger.Printf("error: unable to read metadata - %e. %s: %s, ",
-			err, SubjectTag, msg.Subject)
+		ww.l.Error("unable to read metadata", err,
+			slog.String(SubjectTag, msg.Subject))
 	}
 
 	decisionDirective, err := ww.handler.Process(ctx, msg)
 	if err != nil {
-		ww.logger.Printf("error: process message ended with error - %e. decision directive - %s",
-			err, decisionDirective)
+		ww.l.Error("process message ended with error", err,
+			slog.String(natsConsumerDirectiveTag, decisionDirective.String()))
 	}
 
 	switch {
 	case decisionDirective == DirectiveForPass:
 		arrErr := msg.Ack()
 		if arrErr != nil {
-			ww.logger.Printf("error: unable to ACK message - %e", arrErr)
+			ww.l.Error("unable to ACK message", arrErr)
 		}
 
 	case decisionDirective == DirectiveForReQueue:
@@ -113,13 +113,13 @@ func (ww *jsConsumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg
 
 		nakErr := msg.NakWithDelay(delay)
 		if nakErr != nil {
-			ww.logger.Printf("error: unable to RE-QUEUE message - %e", nakErr)
+			ww.l.Error("unable to RE-QUEUE message", nakErr)
 		}
 
 	case decisionDirective == DirectiveForReject:
 		termErr := msg.Term()
 		if termErr != nil {
-			ww.logger.Printf("error: unable to REJECTION-ACK message - %e", err)
+			ww.l.Error("unable to REJECTION-ACK message", err)
 		}
 	}
 }

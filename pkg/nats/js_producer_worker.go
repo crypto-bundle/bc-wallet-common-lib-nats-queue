@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -43,7 +43,7 @@ type ProducerWorkerTask func(msg nats.Msg) error
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	logger     *log.Logger
+	l          *slog.Logger
 	msgChannel <-chan *nats.Msg
 
 	streamName string
@@ -72,12 +72,11 @@ func (ww *jsProducerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Printf("error: %s - %e",
-					"unable to send message to broker service", err)
+				ww.l.Error("unable to send message to broker service", err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Print("received close worker message")
+			ww.l.Info("received close worker message")
 
 			return
 		}
@@ -95,8 +94,7 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	}
 
 	if pubAck == nil {
-		ww.logger.Printf("error: %s - %e",
-			"received nil pubAck", ErrNilPubAck)
+		ww.l.Error("received nil pubAck", ErrNilPubAck)
 
 		return ErrNilPubAck
 	}
@@ -104,17 +102,16 @@ func (ww *jsProducerWorkerWrapper) publishMsg(v *nats.Msg) error {
 	return nil
 }
 
-func newJsProducerWorker(loggerFactorySvc loggerService,
+func newJsProducerWorker(logFactorySvc loggerService,
 	workerNum uint32,
 	msgChannel chan *nats.Msg,
 	streamName string,
 	subjects []string,
 ) *jsProducerWorkerWrapper {
 	return &jsProducerWorkerWrapper{
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamProducerUnitNameTag,
-			}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamProducerUnitNameTag),
+		),
 		msgChannel:       msgChannel,
 		streamName:       streamName,
 		subjects:         subjects,

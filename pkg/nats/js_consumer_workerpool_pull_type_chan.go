@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -50,7 +50,7 @@ type jsPullTypeChannelConsumerWorkerPool struct {
 	handler consumerHandler
 	workers []*jsConsumerWorkerWrapper
 
-	logger *log.Logger
+	l *slog.Logger
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -59,7 +59,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("error: unable to call onClosed callback in consumer worker pool unit - %e",
+			wp.l.Error("unable to call onClosed callback in consumer worker pool unit",
 				loopErr)
 		}
 
@@ -71,7 +71,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 	err = wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("error: unable to call onClosed callback in subscriber service - %e", err)
+		wp.l.Error("unable to call onClosed callback in subscriber service", err)
 	}
 
 	close(wp.msgChannel)
@@ -129,14 +129,14 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.pullSubscriber.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("error: unable to unSubscribe - %e", err)
+			wp.l.Error("unable to unSubscribe", err)
 		}
 	}()
 
 	return nil
 }
 
-func NewJsPullTypeConsumerWorkersPool(loggerFactorySvc loggerService,
+func NewJsPullTypeConsumerWorkersPool(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
@@ -144,15 +144,15 @@ func NewJsPullTypeConsumerWorkersPool(loggerFactorySvc loggerService,
 ) *jsPullTypeChannelConsumerWorkerPool {
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	pullSubscriber := newJsPullChanSubscriptionService(loggerFactorySvc, errFormatterSvc,
+	pullSubscriber := newJsPullChanSubscriptionService(logFactorySvc, errFormatterSvc,
 		natsConn, consumerCfg, msgChannel)
 
 	workersPool := &jsPullTypeChannelConsumerWorkerPool{
 		handler: handler,
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
-			natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-		}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+		),
 		msgChannel:     msgChannel,
 		subjectName:    consumerCfg.GetSubjectName(),
 		pullSubscriber: pullSubscriber,
@@ -165,11 +165,11 @@ func NewJsPullTypeConsumerWorkersPool(loggerFactorySvc loggerService,
 		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger: loggerFactorySvc.WithFields(map[string]interface{}{
-				natsFunctionalUnitTag: natsWorkerNameTag,
-				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-				workerUnitNumberTag:   i,
-			}),
+			l: logFactorySvc.NewSlogLoggerEntryWithFields(
+				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+				slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+				slog.Int(workerUnitNumberTag, int(i)),
+			),
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}

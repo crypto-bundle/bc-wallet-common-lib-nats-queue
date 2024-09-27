@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -52,8 +52,8 @@ type simplePushChanSubscription struct {
 
 	handler func(msg *nats.Msg)
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (s *simplePushChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -82,13 +82,13 @@ func (s *simplePushChanSubscription) OnDisconnect(_ *nats.Conn, _ error) error {
 
 func (s *simplePushChanSubscription) Healthcheck(_ context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -130,8 +130,8 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.natsConn.Subscribe(s.subjectName, s.handler)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe  %e. %s: %d",
-				subsErr, ResubscribeTag, i)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			err = subsErr
 
@@ -142,7 +142,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -154,7 +154,7 @@ func (s *simplePushChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newSimplePushSubscriptionService(loggerFactorySvc loggerService,
+func newSimplePushSubscriptionService(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfig,
@@ -172,11 +172,10 @@ func newSimplePushSubscriptionService(loggerFactorySvc loggerService,
 
 		handler: handler,
 
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsSimpleSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
-			}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsSimpleSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

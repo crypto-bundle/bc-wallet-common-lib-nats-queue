@@ -35,7 +35,7 @@ package nats
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -61,8 +61,8 @@ type jsPullChanSubscription struct {
 
 	ticker *time.Ticker
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (s *jsPullChanSubscription) OnClosed(_ *nats.Conn) error {
@@ -98,13 +98,13 @@ func (s *jsPullChanSubscription) OnDisconnect(conn *nats.Conn, err error) error 
 
 func (s *jsPullChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -167,10 +167,10 @@ func (s *jsPullChanSubscription) run(ctx context.Context) {
 				continue
 			}
 
-			s.logger.Printf("unable fetch data - %e", fetchErr)
+			s.l.Error("unable fetch data", fetchErr)
 
 		case <-ctx.Done():
-			s.logger.Print("received close message")
+			s.l.Info("received close message")
 
 			return
 		}
@@ -193,8 +193,8 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.PullSubscribe(s.subjectName, s.durableName, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe - %s: %d, %e",
-				ResubscribeTag, i, subsErr)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			err = subsErr
 
@@ -205,7 +205,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -217,7 +217,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
+func newJsPullChanSubscriptionService(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigPullType,
@@ -255,11 +255,10 @@ func newJsPullChanSubscriptionService(loggerFactorySvc loggerService,
 
 		ticker: nil, // it will be set @ Subscribe stage
 
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPullTypeConsumerNameTag,
-			}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

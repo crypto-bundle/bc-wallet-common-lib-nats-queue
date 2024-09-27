@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -55,8 +55,8 @@ type jsPushQueueGroupChanSubscription struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -91,13 +91,13 @@ func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err err
 
 func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("subscription: lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("subscription: lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -152,8 +152,8 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe - %e, %s: %d",
-				subsErr, ResubscribeTag, i)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			err = subsErr
 
@@ -164,7 +164,7 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -176,7 +176,7 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	return nil
 }
 
-func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
+func newJsPushQueueGroupChanSubscriptionService(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
@@ -207,11 +207,11 @@ func newJsPushQueueGroupChanSubscriptionService(loggerFactorySvc loggerService,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-			}),
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

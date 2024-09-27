@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -48,7 +48,7 @@ type jsPushTypeChannelConsumerWorkerPool struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *log.Logger
+	logger *slog.Logger
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
@@ -57,7 +57,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("error: unable to call onClosed in consumer worker pool unit - %e", loopErr)
+			wp.logger.Error("unable to call onClosed in consumer worker pool unit", loopErr)
 		}
 
 		wp.workers[i] = nil
@@ -65,7 +65,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 
 	err = wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("error: unable to call onClosed in subscription service - %e", err)
+		wp.logger.Error("unable to call onClosed in subscription service", err)
 	}
 
 	close(wp.msgChannel)
@@ -116,10 +116,10 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("unable to unSubscribe - %e", err)
+			wp.logger.Error("unable to unSubscribe", err)
 		}
 
-		wp.logger.Printf("successfully unSubscribed")
+		wp.logger.Info("successfully unSubscribed")
 	}()
 
 	return nil
@@ -138,10 +138,10 @@ func NewJsPushTypeChannelConsumerWorkersPool(loggerFactorySvc loggerService,
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler: handler,
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
-			natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
-		}),
+		logger: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+		),
 		subscriptionSvc: subscriptionSrv,
 		msgChannel:      msgChannel,
 		workers:         nil,
@@ -153,11 +153,11 @@ func NewJsPushTypeChannelConsumerWorkersPool(loggerFactorySvc loggerService,
 		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger: loggerFactorySvc.WithFields(map[string]interface{}{
-				natsFunctionalUnitTag: natsWorkerNameTag,
-				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
-				workerUnitNumberTag:   i,
-			}),
+			l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+				slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+				slog.Int(workerUnitNumberTag, int(i)),
+			),
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}

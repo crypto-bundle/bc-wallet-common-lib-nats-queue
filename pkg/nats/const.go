@@ -41,8 +41,9 @@ const (
 	ConsumerIndex = "consumer_index"
 	ProducerIndex = "producer_index"
 
-	natsFunctionalUnitTag = "nats_unit"
-	natsConsumerTypeTag   = "consumer_type"
+	natsFunctionalUnitTag    = "nats_unit"
+	natsConsumerTypeTag      = "consumer_type"
+	natsConsumerDirectiveTag = "consumer_processing_result_directive"
 
 	natsConnectionUnitNameTag            = "connection"
 	natsJetStreamConsumerUnitNameTag     = "js_consumer"

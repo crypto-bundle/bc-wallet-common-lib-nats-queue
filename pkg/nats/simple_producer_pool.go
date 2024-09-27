@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/nats-io/nats.go"
@@ -42,8 +42,8 @@ import (
 
 // simpleProducerWorkerPool is a minimal Worker implementation that simply wraps a
 type simpleProducerWorkerPool struct {
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 
 	msgChannel chan *nats.Msg
 
@@ -60,7 +60,7 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	for i, _ := range wp.workers {
 		loopErr := wp.workers[i].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Printf("error: unable to call onClosed in simple producer pool unit - %e",
+			wp.l.Error("unable to call onClosed callback in consumer worker pool unit",
 				loopErr)
 
 			err = loopErr
@@ -103,7 +103,7 @@ func (wp *simpleProducerWorkerPool) run(ctx context.Context) {
 
 func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 	if !wp.natsProducerConn.IsConnected() {
-		wp.logger.Print("lost NATS origin connection")
+		wp.l.Warn("lost NATS origin connection")
 
 		return false
 	}
@@ -127,13 +127,11 @@ func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
 	msgChannel chan *nats.Msg,
 	workers []*producerWorkerWrapper,
 ) *simpleProducerWorkerPool {
-	logger := loggerFactorySvc.WithFields(map[string]interface{}{
-		natsFunctionalUnitTag: natsProducerWorkerPoolUnitNameTag,
-	})
-
 	workersPool := &simpleProducerWorkerPool{
-		logger: logger,
-		e:      errFormatterSvc,
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsProducerWorkerPoolUnitNameTag),
+		),
+		e: errFormatterSvc,
 
 		msgChannel:       msgChannel,
 		natsProducerConn: natsProducerConn,

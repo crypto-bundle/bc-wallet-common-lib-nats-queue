@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -44,7 +44,7 @@ type simpleConsumerSingeWorker struct {
 	subscriptionSvc subscriptionService
 	worker          *consumerWorkerWrapper
 
-	logger *log.Logger
+	l *slog.Logger
 }
 
 func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
@@ -68,7 +68,7 @@ func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) er
 func (wp *simpleConsumerSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("error: unable to call onClosed callbac - %e", err)
+		wp.l.Error("unable to call onClosed callbac", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -106,9 +106,9 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 ) *simpleConsumerSingeWorker {
 	workerWrapper := &consumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsSimpleConsumerWorkerUnitNameTag,
-		}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsSimpleConsumerWorkerUnitNameTag),
+		),
 		handler: handler,
 	}
 
@@ -116,10 +116,10 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 		consumerCfg, workerWrapper.ProcessMsg)
 
 	worker := &simpleConsumerSingeWorker{
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsWorkerNameTag,
-			natsConsumerTypeTag:   natsSimpleConsumerWorkerUnitNameTag,
-		}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+			slog.String(natsConsumerTypeTag, natsSimpleConsumerWorkerUnitNameTag),
+		),
 		subscriptionSvc: subscriptionSvc,
 		worker:          workerWrapper,
 	}

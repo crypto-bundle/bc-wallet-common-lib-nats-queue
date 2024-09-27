@@ -58,6 +58,10 @@ output:
   uniq-by-line: true
 
 linters-settings:
+  wsl:
+    force-short-decl-cuddling: false
+    force-err-cuddling: true
+
   gci:
     # Section configuration to compare against.
     # Section names are case-insensitive and may contain parameters in ().
@@ -66,20 +70,37 @@ linters-settings:
     # Default: ["standard", "default"]
     sections:
       - standard # Standard section: captures all standard packages.
+      - alias # Alias section: contains all alias imports. This section is not present unless explicitly enabled.
+      - localmodule # Local module section: contains all local packages. This section is not present unless explicitly enabled.
       - default # Default section: contains all imports that could not be matched to another section type.
       - blank # Blank section: contains all blank imports. This section is not present unless explicitly enabled.
       - dot # Dot section: contains all dot imports. This section is not present unless explicitly enabled.
-      - alias # Alias section: contains all alias imports. This section is not present unless explicitly enabled.
-#      - prefix(github.com/org/project) # Custom section: groups all imports with the specified Prefix.
-      - localmodule # Local module section: contains all local packages. This section is not present unless explicitly enabled.
+    #      - prefix(github.com/org/project) # Custom section: groups all imports with the specified Prefix.
     skip-generated: true
-    custom-order: false
+    custom-order: true
 
   revive:
     rules:
       - name: unexported-return
         severity: warning
         disabled: true
+
+  wrapcheck:
+    ignoreSigs:
+      - errors.New(
+      - errors.Unwrap(
+      - errors.Join(
+      - .Wrap(
+      - .Wrapf(
+      - .WithMessage(
+      - .WithMessagef(
+      - .WithStack(
+      # bc-wallet-common-lib-errors
+      - .Errorf(
+      - .ErrorOnly(
+      - .Error(
+      - .NewError(
+      - .NewErrorf(
 
   exhaustive:
     check: []
@@ -90,6 +111,7 @@ linters-settings:
       main:
         allow:
           - $gostd
+          - github.com/crypto-bundle/
           - github.com/nats-io/nats.go
 
 issues:
@@ -160,7 +182,7 @@ linters:
     - importas
     - inamedparam
     - ineffassign
-    - interfacebloat
+#    - interfacebloat
     - intrange
     - ireturn
     - lll

@@ -34,15 +34,15 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
 
 // producerWorkerWrapper ...
 type producerWorkerWrapper struct {
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 
 	natsProducerConn *nats.Conn
 	msgChannel       <-chan *nats.Msg
@@ -57,12 +57,11 @@ func (ww *producerWorkerWrapper) Run(ctx context.Context) {
 		case v := <-ww.msgChannel:
 			err := ww.publishMsg(v)
 			if err != nil {
-				ww.logger.Printf("error: send message to broker service failed - %e",
-					err)
+				ww.l.Error("send message to broker service failed", err)
 			}
 
 		case <-ctx.Done():
-			ww.logger.Printf("received close worker message")
+			ww.l.Info("received close worker message")
 
 			return
 		}
@@ -105,13 +104,12 @@ func newProducerWorker(loggerFactorySvc loggerService,
 	subject string,
 	natsProducerConn *nats.Conn,
 ) *producerWorkerWrapper {
-	logger := loggerFactorySvc.WithFields(map[string]interface{}{
-		natsFunctionalUnitTag: natsSimpleProducerWorkerUnitNameTag,
-	})
-
 	return &producerWorkerWrapper{
-		logger:           logger,
-		e:                errFormatterSvc,
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsSimpleProducerWorkerUnitNameTag),
+		),
+		e: errFormatterSvc,
+		
 		msgChannel:       msgChannel,
 		subject:          subject,
 		natsProducerConn: natsProducerConn,

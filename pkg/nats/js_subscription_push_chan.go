@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -54,8 +54,8 @@ type jsPushSubscription struct {
 
 	msgChannel chan *nats.Msg
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (s *jsPushSubscription) OnClosed(conn *nats.Conn) error {
@@ -90,13 +90,13 @@ func (s *jsPushSubscription) OnDisconnect(conn *nats.Conn, err error) error {
 
 func (s *jsPushSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -145,8 +145,8 @@ func (s *jsPushSubscription) tryResubscribe() error {
 	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
 		subs, subsErr := s.jsNatsCtx.ChanSubscribe(s.subjectName, s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe - %e. %s: %d",
-				subsErr, ResubscribeTag, i)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			time.Sleep(s.autoReSubscribeTimeout)
 
@@ -157,7 +157,7 @@ func (s *jsPushSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -200,11 +200,10 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPushTypeConsumerNameTag,
-			}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

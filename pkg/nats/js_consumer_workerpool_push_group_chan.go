@@ -34,6 +34,7 @@ package nats
 
 import (
 	"github.com/nats-io/nats.go"
+	"log/slog"
 )
 
 // jsPushTypeQueueGroupChannelConsumerWorkerPool is a minimal Worker implementation that simply wraps a
@@ -54,10 +55,10 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 
 	workersPool := &jsPushTypeChannelConsumerWorkerPool{
 		handler: handler,
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsConsumerWorkerPoolUnitNameTag,
-			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-		}),
+		logger: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+		),
 		workers:         nil,
 		subscriptionSvc: subscriptionSrv,
 		msgChannel:      msgChannel,
@@ -69,11 +70,11 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger: loggerFactorySvc.WithFields(map[string]interface{}{
-				natsFunctionalUnitTag: natsWorkerNameTag,
-				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-				workerUnitNumberTag:   i,
-			}),
+			l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+				slog.Int(workerUnitNumberTag, int(i)),
+			),
 			reQueueDelay:      requeueDelays,
 			reQueueDelayCount: uint64(len(requeueDelays) - 1),
 		}

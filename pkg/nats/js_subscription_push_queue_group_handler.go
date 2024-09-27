@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -55,8 +55,8 @@ type jsPushQueueGroupHandlerSubscription struct {
 
 	handler func(msg *nats.Msg)
 
-	logger *log.Logger
-	e      errorFormatterService
+	l *slog.Logger
+	e errorFormatterService
 }
 
 func (s *jsPushQueueGroupHandlerSubscription) OnReconnect(newConn *nats.Conn) error {
@@ -92,13 +92,13 @@ func (s *jsPushQueueGroupHandlerSubscription) OnDisconnect(conn *nats.Conn, err 
 
 func (s *jsPushQueueGroupHandlerSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Print("lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Print("lost NATS subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -149,8 +149,8 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 		subs, subsErr := s.jsNatsCtx.QueueSubscribe(s.subjectName, s.queueGroupName,
 			s.handler, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Printf("error: unable to re-subscribe - %e. %s: %d",
-				subsErr, ResubscribeTag, i)
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, int(i)))
 
 			err = subsErr
 
@@ -161,7 +161,7 @@ func (s *jsPushQueueGroupHandlerSubscription) tryResubscribe() error {
 
 		s.natsSubs = subs
 
-		s.logger.Print("re-subscription success")
+		s.l.Info("re-subscription success")
 
 		return nil
 	}
@@ -205,11 +205,10 @@ func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
 		subscribeNatsOptions:   subOptions,
 
 		handler: handler,
-		logger: loggerFactorySvc.WithFields(
-			map[string]interface{}{
-				natsFunctionalUnitTag: natsJetStreamSubscriptionUnitNameTag,
-				natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-			}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+		),
 		e: errFormatterSvc,
 	}
 }

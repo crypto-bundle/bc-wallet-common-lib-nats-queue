@@ -34,7 +34,7 @@ package nats
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -45,7 +45,7 @@ type jsConsumerPushQueueGroupSingeWorker struct {
 
 	worker *jsConsumerWorkerWrapper
 
-	logger *log.Logger
+	logger *slog.Logger
 	e      errorFormatterService
 }
 
@@ -70,7 +70,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnClosed(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
-		wp.logger.Printf("error: unable to call onClosed callback - %e", err)
+		wp.logger.Error("error: unable to call onClosed callback", err)
 	}
 
 	wp.subscriptionSvc = nil
@@ -102,7 +102,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSvc.UnSubscribe()
 		if err != nil {
-			wp.logger.Printf("error: unable to unSubscribe - %e", err)
+			wp.logger.Error("error: unable to unSubscribe", err)
 		}
 	}()
 
@@ -119,9 +119,9 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 
 	workerWrapper := &jsConsumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsJetStreamConsumerUnitNameTag,
-		}),
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsJetStreamConsumerUnitNameTag),
+		),
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
 		reQueueDelayCount: uint64(len(requeueDelays) - 1),
@@ -132,10 +132,10 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 		workerWrapper.ProcessMsg)
 
 	workersPool := &jsConsumerPushQueueGroupSingeWorker{
-		logger: loggerFactorySvc.WithFields(map[string]interface{}{
-			natsFunctionalUnitTag: natsWorkerNameTag,
-			natsConsumerTypeTag:   natsPushTypeQueueGroupConsumerNameTag,
-		}),
+		logger: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
+			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+		),
 		subscriptionSvc: subscriptionSvc,
 		worker:          workerWrapper,
 	}
