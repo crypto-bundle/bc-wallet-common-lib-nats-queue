@@ -42,6 +42,7 @@ import (
 // simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps...
 type simpleConsumerWorkerPool struct {
 	l *slog.Logger
+	e errorFormatterService
 
 	handler         consumerHandler
 	subscriptionSrv subscriptionService
@@ -64,16 +65,22 @@ func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 		wp.workers[index] = nil
 	}
 
-	close(wp.msgChannel)
-	wp.msgChannel = nil
+	defer func() {
+		close(wp.msgChannel)
+		wp.msgChannel = nil
+	}()
 
-	return err
+	if err != nil {
+		return wp.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }
 
 func (wp *simpleConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	retErr := wp.subscriptionSrv.OnReconnect(conn)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -82,7 +89,7 @@ func (wp *simpleConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 func (wp *simpleConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSrv.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -93,7 +100,12 @@ func (wp *simpleConsumerWorkerPool) Healthcheck(ctx context.Context) bool {
 }
 
 func (wp *simpleConsumerWorkerPool) Init(ctx context.Context) error {
-	return wp.subscriptionSrv.Init(ctx)
+	err := wp.subscriptionSrv.Init(ctx)
+	if err != nil {
+		return wp.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }
 
 func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
@@ -134,11 +146,12 @@ func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
-		handler: handler,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
 			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
 			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
 		),
+		e:               errFormatterSvc,
+		handler:         handler,
 		workers:         nil,
 		subscriptionSrv: subscriptionSvc,
 
@@ -147,13 +160,13 @@ func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 
 	for index := range consumerCfg.GetWorkersCount() {
 		workerWrapper := &consumerWorkerWrapper{
-			msgChannel: msgChannel,
-			handler:    workersPool.handler,
 			l: logFactorySvc.NewSlogLoggerEntryWithFields(
 				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
 				slog.Int(workerUnitNumberTag, int(index)),
 			),
+			msgChannel: msgChannel,
+			handler:    workersPool.handler,
 		}
 
 		workersPool.workers = append(workersPool.workers, workerWrapper)

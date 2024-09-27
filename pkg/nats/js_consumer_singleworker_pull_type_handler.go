@@ -50,12 +50,16 @@ type jsPullTypeHandlerConsumer struct {
 }
 
 func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
+	defer func() {
+		wp.pullSubscriber = nil
+	}()
+
 	err := wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
 		wp.l.Error("unable to call onClosed callback", err)
-	}
 
-	wp.pullSubscriber = nil
+		return wp.e.ErrorNoWrap(err)
+	}
 
 	return nil
 }
@@ -63,7 +67,7 @@ func (wp *jsPullTypeHandlerConsumer) OnClosed(conn *nats.Conn) error {
 func (wp *jsPullTypeHandlerConsumer) OnReconnect(conn *nats.Conn) error {
 	err := wp.pullSubscriber.OnReconnect(conn)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -72,7 +76,7 @@ func (wp *jsPullTypeHandlerConsumer) OnReconnect(conn *nats.Conn) error {
 func (wp *jsPullTypeHandlerConsumer) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.pullSubscriber.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -85,7 +89,7 @@ func (wp *jsPullTypeHandlerConsumer) Healthcheck(ctx context.Context) bool {
 func (wp *jsPullTypeHandlerConsumer) Init(ctx context.Context) error {
 	err := wp.pullSubscriber.Init(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -94,7 +98,7 @@ func (wp *jsPullTypeHandlerConsumer) Init(ctx context.Context) error {
 func (wp *jsPullTypeHandlerConsumer) Run(ctx context.Context) error {
 	err := wp.pullSubscriber.Subscribe(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	go func() {

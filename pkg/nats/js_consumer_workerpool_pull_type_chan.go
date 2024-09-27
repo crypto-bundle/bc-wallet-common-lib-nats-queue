@@ -66,25 +66,26 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 		wp.workers[index] = nil
 	}
 
-	wp.handler = nil
-	close(wp.msgChannel)
+	defer func() {
+		close(wp.msgChannel)
+		wp.handler = nil
+		wp.pullSubscriber = nil
+	}()
 
 	err = wp.pullSubscriber.OnClosed(conn)
 	if err != nil {
 		wp.l.Error("unable to call onClosed callback in subscriber service", err)
+
+		return wp.e.ErrorNoWrap(err)
 	}
 
-	close(wp.msgChannel)
-	wp.handler = nil
-	wp.pullSubscriber = nil
-
-	return err
+	return nil
 }
 
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	err := wp.pullSubscriber.OnReconnect(conn)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -93,7 +94,7 @@ func (wp *jsPullTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) erro
 func (wp *jsPullTypeChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.pullSubscriber.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil

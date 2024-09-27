@@ -7,6 +7,7 @@
 * Changed MIT License to NON-AI MIT
 * Removed log.Logger dependency
 * Removed zap.Logger dependency
+* Fixed all linter warnings
 
 ## [v0.1.12] - 17.04.2024
 ### Changed

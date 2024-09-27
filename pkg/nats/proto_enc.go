@@ -42,7 +42,7 @@ const ProtobufEncoderName = "protobuf"
 // This encoder will use the builtin github.com/golang/protobuf/proto to Marshal
 // and Unmarshal most types, including structs.
 type ProtobufEncoder struct {
-	// Empty
+	e errorFormatterService
 }
 
 // Encode ...
@@ -54,7 +54,12 @@ func (pe *ProtobufEncoder) Encode(_ string, // subject
 		return nil, ErrUnableToCastProtobufType
 	}
 
-	return proto.Marshal(protoMsg)
+	rawData, err := proto.Marshal(protoMsg)
+	if err != nil {
+		return nil, pe.e.ErrorNoWrap(err)
+	}
+
+	return rawData, nil
 }
 
 // Decode ...
@@ -67,5 +72,10 @@ func (pe *ProtobufEncoder) Decode(_ string, // subject
 		return ErrUnableToCastProtobufType
 	}
 
-	return proto.Unmarshal(data, protoMsgPtr)
+	err := proto.Unmarshal(data, protoMsgPtr)
+	if err != nil {
+		return pe.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }

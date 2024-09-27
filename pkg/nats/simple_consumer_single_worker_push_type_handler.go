@@ -42,6 +42,7 @@ import (
 // simpleConsumerSingeWorker is a minimal Worker implementation that simply wraps...
 type simpleConsumerSingeWorker struct {
 	l *slog.Logger
+	e errorFormatterService
 
 	subscriptionSvc subscriptionService
 	worker          *consumerWorkerWrapper
@@ -50,7 +51,7 @@ type simpleConsumerSingeWorker struct {
 func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -59,19 +60,23 @@ func (wp *simpleConsumerSingeWorker) OnReconnect(conn *nats.Conn) error {
 func (wp *simpleConsumerSingeWorker) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
 }
 
 func (wp *simpleConsumerSingeWorker) OnClosed(conn *nats.Conn) error {
+	defer func() {
+		wp.subscriptionSvc = nil
+	}()
+
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
 		wp.l.Error("unable to call onClosed callback", err)
-	}
 
-	wp.subscriptionSvc = nil
+		return wp.e.ErrorNoWrap(err)
+	}
 
 	return nil
 }
@@ -79,7 +84,7 @@ func (wp *simpleConsumerSingeWorker) OnClosed(conn *nats.Conn) error {
 func (wp *simpleConsumerSingeWorker) Init(ctx context.Context) error {
 	err := wp.subscriptionSvc.Init(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -92,7 +97,7 @@ func (wp *simpleConsumerSingeWorker) Healthcheck(ctx context.Context) bool {
 func (wp *simpleConsumerSingeWorker) Run(ctx context.Context) error {
 	err := wp.subscriptionSvc.Subscribe(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -120,6 +125,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
 			slog.String(natsConsumerTypeTag, natsSimpleConsumerWorkerUnitNameTag),
 		),
+		e:               errFormatterSvc,
 		subscriptionSvc: subscriptionSvc,
 		worker:          workerWrapper,
 	}

@@ -52,7 +52,7 @@ type jsConsumerPushQueueGroupSingeWorker struct {
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -61,27 +61,31 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) OnReconnect(conn *nats.Conn) erro
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
 }
 
 func (wp *jsConsumerPushQueueGroupSingeWorker) OnClosed(conn *nats.Conn) error {
+	defer func() {
+		wp.subscriptionSvc = nil
+	}()
+
 	err := wp.subscriptionSvc.OnClosed(conn)
 	if err != nil {
 		wp.l.Error("unable to call onClosed callback", err)
+
+		return wp.e.ErrorNoWrap(err)
 	}
 
-	wp.subscriptionSvc = nil
-
-	return err
+	return nil
 }
 
 func (wp *jsConsumerPushQueueGroupSingeWorker) Init(ctx context.Context) error {
 	err := wp.subscriptionSvc.Init(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -94,7 +98,7 @@ func (wp *jsConsumerPushQueueGroupSingeWorker) Healthcheck(ctx context.Context) 
 func (wp *jsConsumerPushQueueGroupSingeWorker) Run(ctx context.Context) error {
 	err := wp.subscriptionSvc.Subscribe(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	go func() {

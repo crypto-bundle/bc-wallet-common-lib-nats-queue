@@ -79,7 +79,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	err := wp.subscriptionSvc.OnReconnect(conn)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) OnReconnect(conn *nats.Conn) erro
 func (wp *jsPushTypeChannelConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSvc.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -99,7 +99,12 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Healthcheck(ctx context.Context) 
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) Init(ctx context.Context) error {
-	return wp.subscriptionSvc.Init(ctx)
+	err := wp.subscriptionSvc.Init(ctx)
+	if err != nil {
+		return wp.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }
 
 func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
@@ -109,7 +114,7 @@ func (wp *jsPushTypeChannelConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.subscriptionSvc.Subscribe(ctx)
 	if err != nil {
-		return err
+		return wp.e.ErrorNoWrap(err)
 	}
 
 	go func() {

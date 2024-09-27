@@ -199,7 +199,9 @@ func NewConnection(cfg configParams,
 		)
 	}
 
-	nats.RegisterEncoder(ProtobufEncoderName, &ProtobufEncoder{})
+	nats.RegisterEncoder(ProtobufEncoderName, &ProtobufEncoder{
+		e: errFormatterSvc,
+	})
 
 	conn := &Connection{
 		mu: sync.Mutex{},
