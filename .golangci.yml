@@ -62,6 +62,11 @@ linters-settings:
     force-short-decl-cuddling: false
     force-err-cuddling: true
 
+  govet:
+    enable-all: true
+    disable:
+      - slog
+
   gci:
     # Section configuration to compare against.
     # Section names are case-insensitive and may contain parameters in ().

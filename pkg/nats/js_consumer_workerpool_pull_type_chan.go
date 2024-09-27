@@ -162,7 +162,7 @@ func NewJsPullTypeConsumerWorkersPool(logFactorySvc loggerService,
 
 	requeueDelays := consumerCfg.GetNakDelayTimings()
 
-	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
+	for i := range consumerCfg.GetWorkersCount() {
 		workerWrapper := &jsConsumerWorkerWrapper{
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,

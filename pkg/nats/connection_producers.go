@@ -50,8 +50,7 @@ func (c *Connection) NewJsProducerSingleWorker(
 	return producer
 }
 
-func (c *Connection) NewJsProducerWorkersPool(
-	workersCount uint32,
+func (c *Connection) NewJsProducerWorkersPool(workersCount uint32,
 	streamName string,
 	subjects []string,
 ) *jsProducerWorkerPool {
@@ -61,7 +60,7 @@ func (c *Connection) NewJsProducerWorkersPool(
 	msgChannel := make(chan *nats.Msg, workersCount)
 	workers := make([]*jsProducerWorkerWrapper, workersCount)
 
-	for i := uint32(0); i < workersCount; i++ {
+	for i := range workersCount {
 		ww := newJsProducerWorker(c.logFactory, i,
 			msgChannel, streamName,
 			subjects)
