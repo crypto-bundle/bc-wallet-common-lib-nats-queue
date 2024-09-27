@@ -42,28 +42,20 @@ import (
 )
 
 type Connection struct {
-	mu sync.Mutex
-
-	originConn *nats.Conn
-
-	cfg     configParams
-	options []nats.Option
-
-	logFactory loggerService
-
-	l *slog.Logger
-	e errorFormatterService
-
-	addresses []string
-
-	retryTimeOut time.Duration
-	retryCount   uint16
-
-	consumerCounter uint
-	consumers       []consumerService
-
-	producersCounter uint
+	cfg              configParams
+	e                errorFormatterService
+	logFactory       loggerService
+	l                *slog.Logger
+	originConn       *nats.Conn
+	options          []nats.Option
+	addresses        []string
+	consumers        []consumerService
 	producers        []producerService
+	retryTimeOut     time.Duration
+	consumerCounter  uint
+	producersCounter uint
+	mu               sync.Mutex
+	retryCount       uint16
 }
 
 func (c *Connection) IsHealed(ctx context.Context) bool {

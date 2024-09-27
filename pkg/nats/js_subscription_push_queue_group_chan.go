@@ -41,18 +41,15 @@ import (
 )
 
 type jsPushQueueGroupChanSubscription struct {
-	l *slog.Logger
-	e errorFormatterService
-
-	subscribeNatsOptions []nats.SubOpt
-	jsNatsCtx            nats.JetStreamContext
-	subjectName          string
-	queueGroupName       string
-
-	natsSubs   *nats.Subscription
-	natsConn   *nats.Conn
-	msgChannel chan *nats.Msg
-
+	e                      errorFormatterService
+	jsNatsCtx              nats.JetStreamContext
+	l                      *slog.Logger
+	natsSubs               *nats.Subscription
+	natsConn               *nats.Conn
+	msgChannel             chan *nats.Msg
+	subjectName            string
+	queueGroupName         string
+	subscribeNatsOptions   []nats.SubOpt
 	autoReSubscribeTimeout time.Duration
 	autoReSubscribeCount   int
 	autoReSubscribe        bool

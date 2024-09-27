@@ -42,14 +42,11 @@ import (
 
 // jsConsumerWorkerWrapper ...
 type jsConsumerWorkerWrapper struct {
-	l *slog.Logger
-
-	msgChannel <-chan *nats.Msg
-
-	handler consumerHandler
-
-	reQueueDelayCount uint64
+	handler           consumerHandler
+	l                 *slog.Logger
+	msgChannel        <-chan *nats.Msg
 	reQueueDelay      []time.Duration
+	reQueueDelayCount uint64
 }
 
 func (ww *jsConsumerWorkerWrapper) OnClosed(_ *nats.Conn) error {

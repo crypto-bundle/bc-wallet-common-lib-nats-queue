@@ -42,23 +42,18 @@ import (
 )
 
 type jsPullHandlerSubscription struct {
-	l *slog.Logger
-	e errorFormatterService
-
-	natsSubs  *nats.Subscription
-	natsConn  *nats.Conn
-	jsNatsCtx nats.JetStreamContext
-
-	subjectName string
-	durableName string
-
-	ticker *time.Ticker
-
-	handler func(msg *nats.Msg)
-
+	jsNatsCtx              nats.JetStreamContext
+	e                      errorFormatterService
+	handler                func(msg *nats.Msg)
+	natsSubs               *nats.Subscription
+	ticker                 *time.Ticker
+	l                      *slog.Logger
+	natsConn               *nats.Conn
+	subjectName            string
+	durableName            string
+	subscribeNatsOptions   []nats.SubOpt
 	autoReSubscribeCount   int
 	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
 	fetchInterval          time.Duration
 	fetchTimeout           time.Duration
 	fetchLimit             uint

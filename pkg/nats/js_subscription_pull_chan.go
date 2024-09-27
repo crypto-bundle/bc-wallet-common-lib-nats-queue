@@ -42,26 +42,21 @@ import (
 )
 
 type jsPullChanSubscription struct {
-	l *slog.Logger
-	e errorFormatterService
-
-	msgChannel chan *nats.Msg
-	natsSubs   *nats.Subscription
-	natsConn   *nats.Conn
-	jsNatsCtx  nats.JetStreamContext
-
-	subjectName string
-	durableName string
-
-	ticker *time.Ticker
-
-	fetchInterval time.Duration
-	fetchTimeout  time.Duration
-	fetchLimit    uint
-
+	jsNatsCtx            nats.JetStreamContext
+	e                    errorFormatterService
+	ticker               *time.Ticker
+	natsConn             *nats.Conn
+	msgChannel           chan *nats.Msg
+	l                    *slog.Logger
+	natsSubs             *nats.Subscription
+	subjectName          string
+	durableName          string
+	subscribeNatsOptions []nats.SubOpt
+	fetchInterval        time.Duration
+	fetchLimit           uint
 	autoReSubscribeCount int
 	autoReSubscribeDelay time.Duration
-	subscribeNatsOptions []nats.SubOpt
+	fetchTimeout         time.Duration
 	autoReSubscribe      bool
 }
 

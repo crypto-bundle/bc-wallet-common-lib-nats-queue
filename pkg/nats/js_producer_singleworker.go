@@ -41,14 +41,12 @@ import (
 
 // jsProducerSingleWorker ...
 type jsProducerSingleWorker struct {
-	l *slog.Logger
-	e errorFormatterService
-
-	streamName string
-	subjects   []string
-
-	natsProducerConn *nats.Conn
+	e                errorFormatterService
 	jsCtx            nats.JetStreamContext
+	l                *slog.Logger
+	natsProducerConn *nats.Conn
+	streamName       string
+	subjects         []string
 }
 
 func (sw *jsProducerSingleWorker) OnClosed(_ *nats.Conn) error {

@@ -41,19 +41,16 @@ import (
 )
 
 type jsPushSubscription struct {
-	e errorFormatterService
-	l *slog.Logger
-
-	natsSubs   *nats.Subscription
-	natsConn   *nats.Conn
-	jsNatsCtx  nats.JetStreamContext
-	msgChannel chan *nats.Msg
-
-	subjectName string
-
+	e                      errorFormatterService
+	jsNatsCtx              nats.JetStreamContext
+	l                      *slog.Logger
+	natsSubs               *nats.Subscription
+	natsConn               *nats.Conn
+	msgChannel             chan *nats.Msg
+	subjectName            string
+	subscribeNatsOptions   []nats.SubOpt
 	autoReSubscribeCount   int
 	autoReSubscribeTimeout time.Duration
-	subscribeNatsOptions   []nats.SubOpt
 	autoReSubscribe        bool
 }
 

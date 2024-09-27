@@ -43,17 +43,13 @@ type ProducerWorkerTask func(msg nats.Msg) error
 
 // jsProducerWorkerWrapper ...
 type jsProducerWorkerWrapper struct {
-	l *slog.Logger
-	e errorFormatterService
-
-	msgChannel <-chan *nats.Msg
-
-	streamName string
-	subjects   []string
-
+	e                errorFormatterService
 	natsProducerConn nats.JetStreamContext
-
-	num uint16
+	l                *slog.Logger
+	msgChannel       <-chan *nats.Msg
+	streamName       string
+	subjects         []string
+	num              uint16
 }
 
 func (ww *jsProducerWorkerWrapper) OnClosed(_ *nats.Conn) error {

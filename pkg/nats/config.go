@@ -42,13 +42,13 @@ const (
 )
 
 type NatsConfig struct {
+	NatsAddresses                     string `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
+	NatsUser                          string `envconfig:"NATS_USER" required:"true" secret:"true"`
+	NatsPassword                      string `envconfig:"NATS_PASSWORD" required:"true" secret:"true"`
 	nastAddresses                     []string
-	NatsAddresses                     string        `envconfig:"NATS_ADDRESSES" default:"nats://ns-1:4223,nats://ns-2:4224,nats://na-3:4225"`
-	NatsUser                          string        `envconfig:"NATS_USER" required:"true" secret:"true"`
-	NatsPassword                      string        `envconfig:"NATS_PASSWORD" required:"true" secret:"true"`
-	NatsConnectionRetryTimeout        time.Duration `envconfig:"NATS_CONNECTION_RETRY_TIMEOUT" default:"15s"`
-	NatsFlushTimeOut                  time.Duration `envconfig:"NATS_FLUSH_TIMEOUT" default:"15s"`
 	NatsSubscriptionRetryTimeout      time.Duration `envconfig:"NATS_SUBSCRIPTION_RETRY_TIMEOUT" default:"3s"`
+	NatsFlushTimeOut                  time.Duration `envconfig:"NATS_FLUSH_TIMEOUT" default:"15s"`
+	NatsConnectionRetryTimeout        time.Duration `envconfig:"NATS_CONNECTION_RETRY_TIMEOUT" default:"15s"`
 	NatsSubscriptionReDeliveryTimeout time.Duration `envconfig:"NATS_SUBSCRIPTION_REDELIVERY_TIMEOUT" default:"3s"`
 	NatsConnectionRetryCount          uint16        `envconfig:"NATS_CONNECTION_RETRY_COUNT" default:"30"`
 	NatsWorkersPerConsumer            uint16        `envconfig:"NATS_WORKER_PER_CONSUMER" default:"5"`
@@ -176,8 +176,9 @@ func (c *ConsumerConfig) GetWorkersCount() uint32 {
 }
 
 type ConsumerConfigGrouped struct {
-	ConsumerConfig
 	QueueGroupName string
+
+	ConsumerConfig
 }
 
 func (c *ConsumerConfigGrouped) GetQueueGroupName() string {
@@ -185,10 +186,8 @@ func (c *ConsumerConfigGrouped) GetQueueGroupName() string {
 }
 
 type ConsumerConfigPullType struct {
-	ConsumerConfig
-
 	DurableName string
-
+	ConsumerConfig
 	FetchInterval time.Duration
 	FetchTimeout  time.Duration
 	FetchLimit    uint
