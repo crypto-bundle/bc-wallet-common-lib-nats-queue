@@ -123,7 +123,7 @@ func NewJsPullTypeHandlerConsumer(logFactorySvc loggerService,
 
 	workerWrapper := &jsConsumerWorkerWrapper{
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamConsumerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 		),
 		msgChannel:        nil, // cuz channel-less single-worker worker pool
 		handler:           handler,
@@ -137,8 +137,7 @@ func NewJsPullTypeHandlerConsumer(logFactorySvc loggerService,
 	return &jsPullTypeHandlerConsumer{
 		e: errFormatterSvc,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
-			slog.String(natsConsumerTypeTag, natsPullTypeQueueGroupConsumerNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSingleWorkerName),
 		),
 		pullSubscriber: pullSubscriber,
 		worker:         workerWrapper,

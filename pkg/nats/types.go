@@ -32,6 +32,8 @@
 
 package nats
 
+const enumCastNilResult = "<nil>"
+
 // ConsumerDirective ....
 type ConsumerDirective uint8
 
@@ -56,16 +58,133 @@ func (d ConsumerDirective) String() string {
 	case DirectiveForReQueue:
 		return DirectiveForReQueueName
 	default:
-		return "<nil>"
+		return enumCastNilResult
 	}
 }
 
-type ConsumerType uint
+type QueueType uint
 
 const (
-	ConsumerTypeJSPushGroupSingleWorker ConsumerType = iota + 1
-	ConsumerTypeJSPushGroupChanelWorkerPool
-	ConsumerTypeJSPullChanelWorkerPool
-	ConsumerTypeSimpleGroupChannelWorkerPool
-	ConsumerTypeSimpleGroupChannelSingleWorker
+	QueueTypeNonGroup QueueType = iota + 1
+	QueueTypeGroup
 )
+
+const (
+	QueueTypeNonGroupName = "queue_non_group"
+	QueueTypeGroupName    = "queue_group"
+)
+
+func (d QueueType) String() string {
+	switch d {
+	case QueueTypeNonGroup:
+		return QueueTypeNonGroupName
+	case QueueTypeGroup:
+		return QueueTypeGroupName
+	default:
+		return enumCastNilResult
+	}
+}
+
+type QueueProcessingUnitType uint
+
+const (
+	QueueProcessingUnitTypeConnection QueueProcessingUnitType = iota + 1
+	QueueProcessingUnitTypeWorker
+	QueueProcessingUnitTypeWorkerPool
+	QueueProcessingUnitTypeSubscription
+	QueueProcessingUnitTypeSingleWorker
+)
+
+const (
+	QueueProcessingUnitTypeConnectionName   = "connection"
+	QueueProcessingUnitTypeWorkerName       = "worker"
+	QueueProcessingUnitTypeWorkerPoolName   = "worker_pool"
+	QueueProcessingUnitTypeSubscriptionName = "subscription"
+	QueueProcessingUnitTypeSingleWorkerName = "single_worker"
+)
+
+func (d QueueProcessingUnitType) String() string {
+	switch d {
+	case QueueProcessingUnitTypeConnection:
+		return QueueProcessingUnitTypeConnectionName
+	case QueueProcessingUnitTypeWorker:
+		return QueueProcessingUnitTypeWorkerName
+	case QueueProcessingUnitTypeWorkerPool:
+		return QueueProcessingUnitTypeWorkerPoolName
+	case QueueProcessingUnitTypeSubscription:
+		return QueueProcessingUnitTypeSubscriptionName
+	case QueueProcessingUnitTypeSingleWorker:
+		return QueueProcessingUnitTypeSingleWorkerName
+	default:
+		return enumCastNilResult
+	}
+}
+
+type SubscriptionHandlerType uint8
+
+const (
+	SubscriptionHandlerTypeChannel SubscriptionHandlerType = iota + 1
+	SubscriptionHandlerTypeCallback
+)
+
+const (
+	SubscriptionHandlerTypeChannelName  = "channel"
+	SubscriptionHandlerTypeCallbackName = "callback"
+)
+
+func (d SubscriptionHandlerType) String() string {
+	switch d {
+	case SubscriptionHandlerTypeChannel:
+		return SubscriptionHandlerTypeChannelName
+	case SubscriptionHandlerTypeCallback:
+		return SubscriptionHandlerTypeCallbackName
+	default:
+		return enumCastNilResult
+	}
+}
+
+type SubscriptionType uint8
+
+const (
+	SubscriptionTypePull SubscriptionType = iota + 1
+	SubscriptionTypePush
+)
+
+const (
+	SubscriptionTypePullName = "pull"
+	SubscriptionTypePushName = "push"
+)
+
+func (d SubscriptionType) String() string {
+	switch d {
+	case SubscriptionTypePull:
+		return SubscriptionTypePullName
+	case SubscriptionTypePush:
+		return SubscriptionTypePushName
+	default:
+		return enumCastNilResult
+	}
+}
+
+type QueueEngine uint8
+
+const (
+	QueueEngineJetStream QueueEngine = iota + 1
+	QueueEngineCore
+)
+
+const (
+	QueueEngineJetStreamName = "jet_stream"
+	QueueEngineCoreName      = "core"
+)
+
+func (d QueueEngine) String() string {
+	switch d {
+	case QueueEngineJetStream:
+		return QueueEngineJetStreamName
+	case QueueEngineCore:
+		return QueueEngineCoreName
+	default:
+		return enumCastNilResult
+	}
+}

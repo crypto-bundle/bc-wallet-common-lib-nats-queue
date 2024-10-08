@@ -129,7 +129,7 @@ func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
 ) *simpleProducerWorkerPool {
 	workersPool := &simpleProducerWorkerPool{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsProducerWorkerPoolUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
 		),
 		e: errFormatterSvc,
 

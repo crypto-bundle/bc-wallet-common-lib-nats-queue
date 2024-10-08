@@ -199,16 +199,12 @@ func NewConnection(cfg configParams,
 		)
 	}
 
-	nats.RegisterEncoder(ProtobufEncoderName, &ProtobufEncoder{
-		e: errFormatterSvc,
-	})
-
 	conn := &Connection{
 		mu: sync.Mutex{},
 
 		logFactory: logFactorySvc,
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsConnectionUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeConnectionName),
 		),
 		e:          errFormatterSvc,
 		originConn: nil, // will be settled @ Connect receiver-function call

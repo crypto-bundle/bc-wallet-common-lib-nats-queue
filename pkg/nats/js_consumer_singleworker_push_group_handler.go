@@ -124,7 +124,7 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 	workerWrapper := &jsConsumerWorkerWrapper{
 		msgChannel: nil, // cuz channel-less single-worker worker pool
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamConsumerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 		),
 		handler:           handler,
 		reQueueDelay:      requeueDelays,
@@ -135,15 +135,14 @@ func NewJsConsumerPushQueueGroupSingeWorker(loggerFactorySvc loggerService,
 		natsConn, consumerCfg,
 		workerWrapper.ProcessMsg)
 
-	workersPool := &jsConsumerPushQueueGroupSingeWorker{
+	worker := &jsConsumerPushQueueGroupSingeWorker{
 		e: errFormatterSvc,
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSingleWorkerName),
 		),
 		subscriptionSvc: subscriptionSvc,
 		worker:          workerWrapper,
 	}
 
-	return workersPool
+	return worker
 }

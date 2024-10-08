@@ -207,8 +207,11 @@ func newJsPushQueueGroupHandlerSubscription(loggerFactorySvc loggerService,
 
 		handler: handler,
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+			slog.String(natsQueueEngineTag, QueueEngineJetStreamName),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSubscriptionName),
+			slog.String(natsSubscriptionQueueType, QueueTypeGroupName),
+			slog.String(natsSubscriptionType, SubscriptionTypePushName),
+			slog.String(natsSubscriptionHandlerType, SubscriptionHandlerTypeCallbackName),
 		),
 		e: errFormatterSvc,
 	}

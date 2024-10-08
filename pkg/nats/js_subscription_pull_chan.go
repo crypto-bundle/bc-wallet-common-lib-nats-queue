@@ -212,6 +212,7 @@ func (s *jsPullChanSubscription) tryResubscribe() error {
 	return nil
 }
 
+//nolint:dupl //it's ok, function does not same with newJsPullHandlerSubscriptionService
 func newJsPullChanSubscriptionService(logFactorySvc loggerService,
 	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
@@ -231,8 +232,11 @@ func newJsPullChanSubscriptionService(logFactorySvc loggerService,
 
 	return &jsPullChanSubscription{
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPullTypeConsumerNameTag),
+			slog.String(natsQueueEngineTag, QueueEngineJetStreamName),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSubscriptionName),
+			slog.String(natsSubscriptionQueueType, QueueTypeNonGroupName),
+			slog.String(natsSubscriptionType, SubscriptionTypePullName),
+			slog.String(natsSubscriptionHandlerType, SubscriptionHandlerTypeChannelName),
 		),
 		e: errFormatterSvc,
 

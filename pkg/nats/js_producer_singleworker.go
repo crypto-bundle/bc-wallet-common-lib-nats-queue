@@ -142,9 +142,10 @@ func NewJsProducerSingleWorkerService(loggerFactorySvc loggerService,
 ) *jsProducerSingleWorker {
 	workersPool := &jsProducerSingleWorker{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamProducerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSingleWorkerName),
 		),
-		e:                errFormatterSvc,
+		e: errFormatterSvc,
+
 		streamName:       streamName,
 		subjects:         subjects,
 		natsProducerConn: natsProducerConn,

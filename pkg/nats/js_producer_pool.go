@@ -145,7 +145,7 @@ func NewJsProducerWorkersPool(loggerFactorySvc loggerService,
 ) *jsProducerWorkerPool {
 	workersPool := &jsProducerWorkerPool{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsProducerWorkerPoolUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
 		),
 		e: errFormatterSvc,
 

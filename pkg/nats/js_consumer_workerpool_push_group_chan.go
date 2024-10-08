@@ -59,8 +59,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 
 		e: errFormatterSvc,
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
 		),
 		workers:         nil,
 		subscriptionSvc: subscriptionSrv,
@@ -74,8 +73,7 @@ func NewJsPushTypeChannelGroupConsumerWorkersPool(loggerFactorySvc loggerService
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
 			l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
-				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+				slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 				slog.Int(workerUnitNumberTag, int(index)),
 			),
 			reQueueDelay:      requeueDelays,

@@ -1,6 +1,6 @@
 # Change Log
 
-## [v0.1.13]
+## [v0.1.13] - 09.10.2024
 ### Added
 * Added slog.Logger dependency from golang standard library
 ### Changed
@@ -8,6 +8,7 @@
 * Removed log.Logger dependency
 * Removed zap.Logger dependency
 * Fixed all linter warnings
+* Removed protobuf dependency
 
 ## [v0.1.12] - 17.04.2024
 ### Changed

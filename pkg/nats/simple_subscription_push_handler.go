@@ -173,8 +173,11 @@ func newSimplePushSubscriptionService(logFactorySvc loggerService,
 		handler: handler,
 
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsSimpleSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+			slog.String(natsQueueEngineTag, QueueEngineCoreName),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSubscriptionName),
+			slog.String(natsSubscriptionQueueType, QueueTypeNonGroupName),
+			slog.String(natsSubscriptionType, SubscriptionTypePushName),
+			slog.String(natsSubscriptionHandlerType, SubscriptionHandlerTypeCallbackName),
 		),
 		e: errFormatterSvc,
 	}

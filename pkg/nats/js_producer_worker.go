@@ -109,7 +109,7 @@ func newJsProducerWorker(logFactorySvc loggerService,
 ) *jsProducerWorkerWrapper {
 	return &jsProducerWorkerWrapper{
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamProducerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 		),
 		e:                errFmtSvc,
 		msgChannel:       msgChannel,

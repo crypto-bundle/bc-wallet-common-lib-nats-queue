@@ -147,8 +147,7 @@ func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 
 	workersPool := &simpleConsumerWorkerPool{
 		l: logFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsConsumerWorkerPoolUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
 		),
 		e:               errFormatterSvc,
 		handler:         handler,
@@ -161,8 +160,7 @@ func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
 	for index := range consumerCfg.GetWorkersCount() {
 		workerWrapper := &consumerWorkerWrapper{
 			l: logFactorySvc.NewSlogLoggerEntryWithFields(
-				slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
-				slog.String(natsConsumerTypeTag, natsPushTypeQueueGroupConsumerNameTag),
+				slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 				slog.Int(workerUnitNumberTag, int(index)),
 			),
 			msgChannel: msgChannel,

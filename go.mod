@@ -2,10 +2,7 @@ module github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
 
 go 1.22
 
-require (
-	github.com/nats-io/nats.go v1.36.0
-	google.golang.org/protobuf v1.33.0
-)
+require github.com/nats-io/nats.go v1.36.0
 
 require (
 	github.com/klauspost/compress v1.17.7 // indirect

@@ -111,7 +111,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 ) *simpleConsumerSingeWorker {
 	workerWrapper := &consumerWorkerWrapper{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsSimpleConsumerWorkerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 		),
 		msgChannel: nil, // cuz channel-less single-worker worker pool
 		handler:    handler,
@@ -122,8 +122,7 @@ func NewSimpleConsumerSingeWorker(loggerFactorySvc loggerService,
 
 	worker := &simpleConsumerSingeWorker{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsWorkerNameTag),
-			slog.String(natsConsumerTypeTag, natsSimpleConsumerWorkerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSingleWorkerName),
 		),
 		e:               errFormatterSvc,
 		subscriptionSvc: subscriptionSvc,

@@ -33,39 +33,19 @@
 package nats
 
 const (
-	SubjectTag     = "subject"
-	DeliveredCount = "delivered_count"
+	SubjectTag = "subject"
 
 	ResubscribeTag = "resubscribe_attempt"
 
 	ConsumerIndex = "consumer_index"
 	ProducerIndex = "producer_index"
 
-	natsFunctionalUnitTag    = "nats_unit"
-	natsConsumerTypeTag      = "consumer_type"
-	natsConsumerDirectiveTag = "consumer_processing_result_directive"
-
-	natsConnectionUnitNameTag            = "connection"
-	natsJetStreamConsumerUnitNameTag     = "js_consumer"
-	natsJetStreamProducerUnitNameTag     = "js_producer"
-	natsJetStreamSubscriptionUnitNameTag = "js_subscription"
-	natsSimpleSubscriptionUnitNameTag    = "simple_subscription"
-	natsConsumerWorkerPoolUnitNameTag    = "consumer_worker_pool"
-	natsProducerWorkerPoolUnitNameTag    = "producer_worker_pool"
-	natsWorkerNameTag                    = "js_worker"
-	natsSimpleConsumerWorkerUnitNameTag  = "simple_consumer_worker"
-	natsSimpleProducerWorkerUnitNameTag  = "simple_producer_worker"
-
-	natsPushTypeQueueGroupConsumerNameTag = "push_type_queue_group"
-	natsPullTypeQueueGroupConsumerNameTag = "pull_type_queue_group"
-	natsPushTypeConsumerNameTag           = "push_type"
-	natsPullTypeConsumerNameTag           = "pull_type"
-
-	QueueStreamNameTag  = "queue_stream"
-	QueueSubjectNameTag = "queue_subject"
-
-	QueuePubAckStreamNameTag = "queue_pub_ack_stream"
-	QueuePubAckSequenceTag   = "queue_pub_ack_sequence"
+	natsFunctionalUnitTag       = "nats_unit"
+	natsQueueEngineTag          = "queue_engine"
+	natsConsumerDirectiveTag    = "consumer_processing_result_directive"
+	natsSubscriptionType        = "subscription_type"
+	natsSubscriptionHandlerType = "subscription_handler_type"
+	natsSubscriptionQueueType   = "subscription_queue_type"
 
 	workerUnitNumberTag = "worker_unit_num"
 

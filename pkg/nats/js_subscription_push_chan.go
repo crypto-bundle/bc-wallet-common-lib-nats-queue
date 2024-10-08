@@ -185,8 +185,11 @@ func newJsPushSubscriptionService(loggerFactorySvc loggerService,
 
 	return &jsPushSubscription{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsJetStreamSubscriptionUnitNameTag),
-			slog.String(natsConsumerTypeTag, natsPushTypeConsumerNameTag),
+			slog.String(natsQueueEngineTag, QueueEngineJetStreamName),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSubscriptionName),
+			slog.String(natsSubscriptionQueueType, QueueTypeNonGroupName),
+			slog.String(natsSubscriptionType, SubscriptionTypePushName),
+			slog.String(natsSubscriptionHandlerType, SubscriptionHandlerTypeChannelName),
 		),
 		e: errFormatterSvc,
 

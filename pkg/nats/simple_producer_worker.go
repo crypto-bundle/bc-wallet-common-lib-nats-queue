@@ -106,7 +106,7 @@ func newProducerWorker(loggerFactorySvc loggerService,
 ) *producerWorkerWrapper {
 	return &producerWorkerWrapper{
 		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
-			slog.String(natsFunctionalUnitTag, natsSimpleProducerWorkerUnitNameTag),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
 		),
 		e:                errFormatterSvc,
 		msgChannel:       msgChannel,
