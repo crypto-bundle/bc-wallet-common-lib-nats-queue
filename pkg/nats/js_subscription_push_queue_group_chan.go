@@ -1,35 +1,64 @@
+/*
+ *
+ *
+ * MIT NON-AI License
+ *
+ * Copyright (c) 2022-2024 Aleksei Kotelnikov(gudron2s@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of the software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions.
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * In addition, the following restrictions apply:
+ *
+ * 1. The Software and any modifications made to it may not be used for the purpose of training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining. This condition applies to any derivatives,
+ * modifications, or updates based on the Software code. Any usage of the Software in an AI-training dataset is considered a breach of this License.
+ *
+ * 2. The Software may not be included in any dataset used for training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining.
+ *
+ * 3. Any person or organization found to be in violation of these restrictions will be subject to legal action and may be held liable
+ * for any damages resulting from such use.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
 package nats
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 type jsPushQueueGroupChanSubscription struct {
-	natsSubs  *nats.Subscription
-	natsConn  *nats.Conn
-	jsNatsCtx nats.JetStreamContext
-
-	subjectName    string
-	queueGroupName string
-
-	autoReSubscribe        bool
-	autoReSubscribeCount   uint16
-	autoReSubscribeTimeout time.Duration
+	e                      errorFormatterService
+	jsNatsCtx              nats.JetStreamContext
+	l                      *slog.Logger
+	natsSubs               *nats.Subscription
+	natsConn               *nats.Conn
+	msgChannel             chan *nats.Msg
+	subjectName            string
+	queueGroupName         string
 	subscribeNatsOptions   []nats.SubOpt
-
-	msgChannel chan *nats.Msg
-
-	logger *zap.Logger
+	autoReSubscribeTimeout time.Duration
+	autoReSubscribeCount   int
+	autoReSubscribe        bool
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -44,7 +73,7 @@ func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
+func (s *jsPushQueueGroupChanSubscription) OnClosed(_ *nats.Conn) error {
 	s.natsSubs = nil
 	s.jsNatsCtx = nil
 	s.natsConn = nil
@@ -53,18 +82,18 @@ func (s *jsPushQueueGroupChanSubscription) OnClosed(conn *nats.Conn) error {
 }
 
 func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err error) error {
-	return nil
+	return s.onDisconnect(conn, err)
 }
 
 func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.logger.Warn("consumer lost nats originConn")
+		s.l.Warn("lost NATS origin connection")
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.logger.Warn("consumer lost nats subscription")
+		s.l.Warn("lost NATS subscription")
 
 		return false
 	}
@@ -75,7 +104,7 @@ func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool
 func (s *jsPushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
 	s.jsNatsCtx = jsNatsCtx
@@ -87,7 +116,7 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to make NATS chan-queue subscription")
 	}
 
 	s.natsSubs = subs
@@ -98,15 +127,14 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 func (s *jsPushQueueGroupChanSubscription) UnSubscribe() error {
 	err := s.natsSubs.Drain()
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err, "unable to drain NATS-subscription")
 	}
 
 	return nil
 }
 
-func (s *jsPushQueueGroupChanSubscription) onDisconnect(conn *nats.Conn, err error) {
-
-	return
+func (s *jsPushQueueGroupChanSubscription) onDisconnect(_ *nats.Conn, _ error) error {
+	return nil
 }
 
 func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
@@ -115,39 +143,41 @@ func (s *jsPushQueueGroupChanSubscription) tryResubscribe() error {
 	}
 
 	var err error = nil
-	for i := uint16(0); i != s.autoReSubscribeCount; i++ {
+
+	for i := range s.autoReSubscribeCount {
 		subs, subsErr := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 			s.msgChannel, s.subscribeNatsOptions...)
 		if subsErr != nil {
-			s.logger.Warn("unable to re-subscribe", zap.Error(err),
-				zap.Uint16(ResubscribeTag, i))
+			s.l.Error("unable to re-subscribe", subsErr,
+				slog.Int(ResubscribeTag, i))
 
 			err = subsErr
 
 			time.Sleep(s.autoReSubscribeTimeout)
+
 			continue
 		}
 
 		s.natsSubs = subs
 
-		s.logger.Info("re-subscription success")
-		break
+		s.l.Info("re-subscription success")
+
+		return nil
 	}
 
 	if err != nil {
-		return err
+		return s.e.ErrorOnly(err)
 	}
 
 	return nil
 }
 
-func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
+func newJsPushQueueGroupChanSubscriptionService(logFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	msgChannel chan *nats.Msg,
 ) *jsPushQueueGroupChanSubscription {
-	l := logger.Named("subscription")
-
 	subOptions := []nats.SubOpt{
 		nats.AckWait(consumerCfg.GetAckWaitTiming()),
 	}
@@ -160,8 +190,9 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 	}
 
 	return &jsPushQueueGroupChanSubscription{
-		natsConn: natsConn,
-		natsSubs: nil, // it will be set @ run stage
+		natsConn:  natsConn,
+		natsSubs:  nil, // it will be set @ run stage
+		jsNatsCtx: nil, // it will be set @ init stage
 
 		subjectName:    consumerCfg.GetSubjectName(),
 		queueGroupName: consumerCfg.GetQueueGroupName(),
@@ -172,6 +203,13 @@ func newJsPushQueueGroupChanSubscriptionService(logger *zap.Logger,
 		subscribeNatsOptions:   subOptions,
 
 		msgChannel: msgChannel,
-		logger:     l,
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsQueueEngineTag, QueueEngineJetStreamName),
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeSubscriptionName),
+			slog.String(natsSubscriptionQueueType, QueueTypeGroupName),
+			slog.String(natsSubscriptionType, SubscriptionTypePushName),
+			slog.String(natsSubscriptionHandlerType, SubscriptionHandlerTypeChannelName),
+		),
+		e: errFormatterSvc,
 	}
 }

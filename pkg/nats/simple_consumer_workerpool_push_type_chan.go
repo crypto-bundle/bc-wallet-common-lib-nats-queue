@@ -1,47 +1,86 @@
+/*
+ *
+ *
+ * MIT NON-AI License
+ *
+ * Copyright (c) 2022-2024 Aleksei Kotelnikov(gudron2s@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of the software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions.
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * In addition, the following restrictions apply:
+ *
+ * 1. The Software and any modifications made to it may not be used for the purpose of training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining. This condition applies to any derivatives,
+ * modifications, or updates based on the Software code. Any usage of the Software in an AI-training dataset is considered a breach of this License.
+ *
+ * 2. The Software may not be included in any dataset used for training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining.
+ *
+ * 3. Any person or organization found to be in violation of these restrictions will be subject to legal action and may be held liable
+ * for any damages resulting from such use.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
 package nats
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
-// simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps a
+// simpleConsumerWorkerPool is a minimal Worker implementation that simply wraps...
 type simpleConsumerWorkerPool struct {
-	handler consumerHandler
-	workers []*consumerWorkerWrapper
+	l *slog.Logger
+	e errorFormatterService
 
+	handler         consumerHandler
 	subscriptionSrv subscriptionService
 
 	msgChannel chan *nats.Msg
-
-	logger *zap.Logger
+	workers    []*consumerWorkerWrapper
 }
 
 func (wp *simpleConsumerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in simple producer pool unit", zap.Error(loopErr))
+			wp.l.Error("unable to call onClosed in simple producer pool unit", loopErr)
 
 			err = loopErr
 		}
 
-		wp.workers[i] = nil
+		wp.workers[index] = nil
 	}
 
-	close(wp.msgChannel)
-	wp.msgChannel = nil
+	defer func() {
+		close(wp.msgChannel)
+		wp.msgChannel = nil
+	}()
 
-	return err
+	if err != nil {
+		return wp.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }
 
 func (wp *simpleConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 	retErr := wp.subscriptionSrv.OnReconnect(conn)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -50,7 +89,7 @@ func (wp *simpleConsumerWorkerPool) OnReconnect(conn *nats.Conn) error {
 func (wp *simpleConsumerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
 	retErr := wp.subscriptionSrv.OnDisconnect(conn, err)
 	if retErr != nil {
-		return retErr
+		return wp.e.ErrorNoWrap(retErr)
 	}
 
 	return nil
@@ -61,7 +100,12 @@ func (wp *simpleConsumerWorkerPool) Healthcheck(ctx context.Context) bool {
 }
 
 func (wp *simpleConsumerWorkerPool) Init(ctx context.Context) error {
-	return wp.subscriptionSrv.Init(ctx)
+	err := wp.subscriptionSrv.Init(ctx)
+	if err != nil {
+		return wp.e.ErrorNoWrap(err)
+	}
+
+	return nil
 }
 
 func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
@@ -71,7 +115,7 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 	err := wp.subscriptionSrv.Subscribe(ctx)
 	if err != nil {
-		wp.logger.Error("unable to subscribe", zap.Error(err))
+		wp.l.Error("unable to subscribe", err)
 	}
 
 	go func() {
@@ -79,42 +123,51 @@ func (wp *simpleConsumerWorkerPool) Run(ctx context.Context) error {
 
 		err = wp.subscriptionSrv.UnSubscribe()
 		if err != nil {
-			wp.logger.Error("unable to unSubscribe", zap.Error(err))
+			if err != nil {
+				wp.l.Error("error: unable to unSubscribe", err)
+			}
 		}
+
+		wp.l.Info("successfully unSubscribed")
 	}()
 
 	return nil
 }
 
-func NewSimpleConsumerWorkersPool(logger *zap.Logger,
+func NewSimpleConsumerWorkersPool(logFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsConn *nats.Conn,
 	consumerCfg consumerConfigQueueGroup,
 	handler consumerHandler,
 ) *simpleConsumerWorkerPool {
-	l := logger.Named("consumer_pool")
-
 	msgChannel := make(chan *nats.Msg, consumerCfg.GetWorkersCount())
 
-	subscriptionSrv := newSimplePushQueueGroupSubscriptionService(l, natsConn,
+	subscriptionSvc := newSimplePushQueueGroupSubscriptionService(logFactorySvc, errFormatterSvc, natsConn,
 		consumerCfg, msgChannel)
 
 	workersPool := &simpleConsumerWorkerPool{
-		handler: handler,
-		logger:  l,
-
-		subscriptionSrv: subscriptionSrv,
+		l: logFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
+		),
+		e:               errFormatterSvc,
+		handler:         handler,
+		workers:         nil,
+		subscriptionSrv: subscriptionSvc,
 
 		msgChannel: msgChannel,
 	}
 
-	for i := uint32(0); i < consumerCfg.GetWorkersCount(); i++ {
-		ww := &consumerWorkerWrapper{
+	for index := range consumerCfg.GetWorkersCount() {
+		workerWrapper := &consumerWorkerWrapper{
+			l: logFactorySvc.NewSlogLoggerEntryWithFields(
+				slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerName),
+				slog.Int(workerUnitNumberTag, int(index)),
+			),
 			msgChannel: msgChannel,
 			handler:    workersPool.handler,
-			logger:     l.With(zap.Uint32(WorkerUnitNumberTag, i)),
 		}
 
-		workersPool.workers = append(workersPool.workers, ww)
+		workersPool.workers = append(workersPool.workers, workerWrapper)
 	}
 
 	return workersPool

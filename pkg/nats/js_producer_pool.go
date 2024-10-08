@@ -1,20 +1,51 @@
+/*
+ *
+ *
+ * MIT NON-AI License
+ *
+ * Copyright (c) 2022-2024 Aleksei Kotelnikov(gudron2s@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of the software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions.
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * In addition, the following restrictions apply:
+ *
+ * 1. The Software and any modifications made to it may not be used for the purpose of training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining. This condition applies to any derivatives,
+ * modifications, or updates based on the Software code. Any usage of the Software in an AI-training dataset is considered a breach of this License.
+ *
+ * 2. The Software may not be included in any dataset used for training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining.
+ *
+ * 3. Any person or organization found to be in violation of these restrictions will be subject to legal action and may be held liable
+ * for any damages resulting from such use.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
 package nats
 
 import (
 	"context"
-	"go.uber.org/zap"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/nats-io/nats.go"
 )
 
-// jsProducerWorkerPool is a minimal Worker implementation that simply wraps a
+// jsProducerWorkerPool is a minimal Worker implementation that simply wraps...
 type jsProducerWorkerPool struct {
-	logger *zap.Logger
+	l *slog.Logger
+	e errorFormatterService
 
 	msgChannel chan *nats.Msg
-	streamName string
-	subjects   []string
 
 	natsConn  *nats.Conn
 	jsNatsCtx nats.JetStreamContext
@@ -25,14 +56,15 @@ type jsProducerWorkerPool struct {
 }
 
 func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in producer pool unit", zap.Error(loopErr))
+			wp.l.Error("unable to call onClosed callback in producer worker pool unit", loopErr)
 
 			return loopErr
 		}
-		wp.workers[i] = nil
+
+		wp.workers[index] = nil
 	}
 
 	wp.natsConn = nil
@@ -45,7 +77,7 @@ func (wp *jsProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
-		return err
+		return wp.e.ErrorOnly(err, "unable to get JetStream context")
 	}
 
 	wp.jsNatsCtx = jsNatsCtx
@@ -55,13 +87,13 @@ func (wp *jsProducerWorkerPool) OnReconnect(newConn *nats.Conn) error {
 	return nil
 }
 
-func (wp *jsProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+func (wp *jsProducerWorkerPool) OnDisconnect(_ *nats.Conn, _ error) error {
 	return nil
 }
 
-func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+func (wp *jsProducerWorkerPool) Healthcheck(_ context.Context) bool {
 	if !wp.natsConn.IsConnected() {
-		wp.logger.Warn("producer lost nats originConn")
+		wp.l.Warn("lost NATS origin connection")
 
 		return false
 	}
@@ -72,25 +104,24 @@ func (wp *jsProducerWorkerPool) Healthcheck(ctx context.Context) bool {
 func (wp *jsProducerWorkerPool) Init(ctx context.Context) error {
 	jsNatsCtx, err := wp.natsConn.JetStream()
 	if err != nil {
-		return err
+		return wp.e.ErrorOnly(err, "unable to get JetStream context")
 	}
 
 	wp.jsNatsCtx = jsNatsCtx
 
-	for i := uint32(0); i < wp.workersCount; i++ {
-		ww := newJsProducerWorker(wp.logger, wp.jsNatsCtx, i,
-			wp.msgChannel, wp.streamName,
-			wp.subjects)
-
-		wp.workers = append(wp.workers, ww)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].Init(ctx, jsNatsCtx)
+		if loopErr != nil {
+			return loopErr
+		}
 	}
 
 	return nil
 }
 
 func (wp *jsProducerWorkerPool) Run(ctx context.Context) error {
-	for i, _ := range wp.workers {
-		go wp.workers[i].Run(ctx)
+	for index := range wp.workers {
+		go wp.workers[index].Run(ctx)
 	}
 
 	return nil
@@ -102,28 +133,30 @@ func (wp *jsProducerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) {
 
 func (wp *jsProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	n := atomic.AddUint32(&wp.rr, 1)
+
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewJsProducerWorkersPool(logger *zap.Logger,
+func NewJsProducerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsProducerConn *nats.Conn,
-	workersCount uint32,
-	streamName string,
-	subjects []string,
+	msgChannel chan *nats.Msg,
+	workers []*jsProducerWorkerWrapper,
 ) *jsProducerWorkerPool {
-	l := logger.Named("producer.service")
-
 	workersPool := &jsProducerWorkerPool{
-		logger:     l,
-		msgChannel: make(chan *nats.Msg, workersCount),
-		streamName: streamName,
-		subjects:   subjects,
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
+		),
+		e: errFormatterSvc,
+
+		msgChannel: msgChannel,
 
 		natsConn:  natsProducerConn,
-		jsNatsCtx: nil, // will be filed @ init stage
+		jsNatsCtx: nil, // will be filled @ init stage
 
-		workersCount: workersCount,
-		rr:           1, // round-robin index
+		workers:      workers,
+		workersCount: uint32(len(workers)),
+		rr:           roundRobinInitialIndex, // round-robin index
 	}
 
 	return workersPool

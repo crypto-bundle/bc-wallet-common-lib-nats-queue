@@ -1,21 +1,51 @@
+/*
+ *
+ *
+ * MIT NON-AI License
+ *
+ * Copyright (c) 2022-2024 Aleksei Kotelnikov(gudron2s@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of the software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions.
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * In addition, the following restrictions apply:
+ *
+ * 1. The Software and any modifications made to it may not be used for the purpose of training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining. This condition applies to any derivatives,
+ * modifications, or updates based on the Software code. Any usage of the Software in an AI-training dataset is considered a breach of this License.
+ *
+ * 2. The Software may not be included in any dataset used for training or improving machine learning algorithms,
+ * including but not limited to artificial intelligence, natural language processing, or data mining.
+ *
+ * 3. Any person or organization found to be in violation of these restrictions will be subject to legal action and may be held liable
+ * for any damages resulting from such use.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
 package nats
 
 import (
 	"context"
-	"go.uber.org/zap"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/nats-io/nats.go"
 )
 
-// simpleProducerWorkerPool is a minimal Worker implementation that simply wraps a
+// simpleProducerWorkerPool is a minimal Worker implementation that simply wraps...
 type simpleProducerWorkerPool struct {
-	logger *zap.Logger
+	l *slog.Logger
+	e errorFormatterService
 
 	msgChannel chan *nats.Msg
-
-	subjectName string
-	groupName   string
 
 	natsProducerConn *nats.Conn
 	workers          []*producerWorkerWrapper
@@ -27,14 +57,16 @@ type simpleProducerWorkerPool struct {
 func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	var err error
 
-	for i, _ := range wp.workers {
-		loopErr := wp.workers[i].OnClosed(conn)
+	for index := range wp.workers {
+		loopErr := wp.workers[index].OnClosed(conn)
 		if loopErr != nil {
-			wp.logger.Error("unable to call onClosed in simple producer pool unit", zap.Error(loopErr))
+			wp.l.Error("unable to call onClosed callback in consumer worker pool unit",
+				loopErr)
 
 			err = loopErr
 		}
-		wp.workers[i] = nil
+
+		wp.workers[index] = nil
 	}
 
 	wp.natsProducerConn = nil
@@ -45,16 +77,15 @@ func (wp *simpleProducerWorkerPool) OnClosed(conn *nats.Conn) error {
 	return err
 }
 
-func (wp *simpleProducerWorkerPool) OnReconnect(conn *nats.Conn) error {
+func (wp *simpleProducerWorkerPool) OnReconnect(_ *nats.Conn) error {
 	return nil
 }
 
-func (wp *simpleProducerWorkerPool) OnDisconnect(conn *nats.Conn, err error) error {
+func (wp *simpleProducerWorkerPool) OnDisconnect(_ *nats.Conn, _ error) error {
 	return nil
 }
 
-func (wp *simpleProducerWorkerPool) Init(ctx context.Context) error {
-
+func (wp *simpleProducerWorkerPool) Init(_ context.Context) error {
 	return nil
 }
 
@@ -65,14 +96,14 @@ func (wp *simpleProducerWorkerPool) Run(ctx context.Context) error {
 }
 
 func (wp *simpleProducerWorkerPool) run(ctx context.Context) {
-	for i, _ := range wp.workers {
-		go wp.workers[i].Run(ctx)
+	for index := range wp.workers {
+		go wp.workers[index].Run(ctx)
 	}
 }
 
-func (wp *simpleProducerWorkerPool) Healthcheck(ctx context.Context) bool {
+func (wp *simpleProducerWorkerPool) Healthcheck(_ context.Context) bool {
 	if !wp.natsProducerConn.IsConnected() {
-		wp.logger.Warn("producer lost nats originConn")
+		wp.l.Warn("lost NATS origin connection")
 
 		return false
 	}
@@ -86,38 +117,27 @@ func (wp *simpleProducerWorkerPool) Produce(ctx context.Context, msg *nats.Msg) 
 
 func (wp *simpleProducerWorkerPool) ProduceSync(ctx context.Context, msg *nats.Msg) error {
 	n := atomic.AddUint32(&wp.rr, 1)
+
 	return wp.workers[n%wp.workersCount].PublishMsg(msg)
 }
 
-func NewSimpleProducerWorkersPool(logger *zap.Logger,
+func NewSimpleProducerWorkersPool(loggerFactorySvc loggerService,
+	errFormatterSvc errorFormatterService,
 	natsProducerConn *nats.Conn,
-	workersCount uint16,
-	subjectName string,
-	groupName string,
+	msgChannel chan *nats.Msg,
+	workers []*producerWorkerWrapper,
 ) *simpleProducerWorkerPool {
-	l := logger.Named("producer.service").
-		With(zap.String(QueueSubjectNameTag, subjectName))
-
-	msgChannel := make(chan *nats.Msg, workersCount)
-
 	workersPool := &simpleProducerWorkerPool{
-		logger: l,
-
-		subjectName: subjectName,
-		groupName:   groupName,
+		l: loggerFactorySvc.NewSlogLoggerEntryWithFields(
+			slog.String(natsFunctionalUnitTag, QueueProcessingUnitTypeWorkerPoolName),
+		),
+		e: errFormatterSvc,
 
 		msgChannel:       msgChannel,
 		natsProducerConn: natsProducerConn,
-		workers:          make([]*producerWorkerWrapper, workersCount),
-		workersCount:     uint32(workersCount),
+		workers:          workers,
+		workersCount:     uint32(len(workers)),
 		rr:               1, // round-robin index
-	}
-
-	for i := uint16(0); i < workersCount; i++ {
-		ww := newProducerWorker(logger, i, msgChannel, subjectName,
-			natsProducerConn)
-
-		workersPool.workers[i] = ww
 	}
 
 	return workersPool

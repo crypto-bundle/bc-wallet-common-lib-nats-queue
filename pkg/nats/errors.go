@@ -32,78 +32,9 @@
 
 package nats
 
-import (
-	"context"
-	"log/slog"
+import "errors"
 
-	"github.com/nats-io/nats.go"
+var (
+	ErrUnableToCastProtobufType = errors.New("unable to type-cast to proto message")
+	ErrNilPubAck                = errors.New("nil pub ack received")
 )
-
-// consumerWorkerWrapper ...
-type consumerWorkerWrapper struct {
-	l *slog.Logger
-
-	msgChannel <-chan *nats.Msg
-
-	handler consumerHandler
-}
-
-func (ww *consumerWorkerWrapper) OnClosed(conn *nats.Conn) error {
-	ww.msgChannel = nil
-	ww.handler = nil
-
-	return nil
-}
-
-func (ww *consumerWorkerWrapper) Run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			ww.l.Info("received close worker message")
-
-			return
-
-		case natsMsg, ok := <-ww.msgChannel:
-			if !ok {
-				ww.l.Info("nats message channel is closed")
-
-				return
-			}
-
-			//nolint:contextcheck //it's ok here, we must play with new empty context
-			ww.processMsg(context.Background(), natsMsg)
-		}
-	}
-}
-
-func (ww *consumerWorkerWrapper) ProcessMsg(msg *nats.Msg) {
-	ww.processMsg(context.Background(), msg)
-}
-
-func (ww *consumerWorkerWrapper) processMsg(ctx context.Context, msg *nats.Msg) {
-	decisionDirective, err := ww.handler.Process(ctx, msg)
-	if err != nil {
-		ww.l.Error("process message ended with error", err,
-			slog.String(natsConsumerDirectiveTag, decisionDirective.String()))
-	}
-
-	switch {
-	case decisionDirective == DirectiveForPass:
-		arrErr := msg.Ack()
-		if arrErr != nil {
-			ww.l.Error("unable to ACK message", arrErr)
-		}
-
-	case decisionDirective == DirectiveForReQueue:
-		nakErr := msg.Nak()
-		if nakErr != nil {
-			ww.l.Error("unable to RE-QUEUE message", nakErr)
-		}
-
-	case decisionDirective == DirectiveForReject:
-		termErr := msg.Term()
-		if termErr != nil {
-			ww.l.Error("unable to REJECTION-ACK message", err)
-		}
-	}
-}

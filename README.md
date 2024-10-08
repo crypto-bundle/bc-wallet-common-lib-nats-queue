@@ -3,7 +3,7 @@
 ## Description
 
 **bc-wallet-common-lib-nats-queue** its library for manage NATS entities like connections, producer and consumer service-components.
-Also library support worker-pool conception for chanel-base subscriptions.
+Also, library support worker-pool conception for chanel-base subscriptions.
 
 
 ### Consumers 
@@ -22,4 +22,4 @@ Library contains wrapper service components for multiple consumer-subscription t
 
 ## Licence
 
-**bc-wallet-common-lib-nats-queue** is licensed under the [MIT](./LICENSE) License.
+**bc-wallet-common-lib-nats-queue** is licensed under the [MIT NON-AI](./LICENSE) License.
