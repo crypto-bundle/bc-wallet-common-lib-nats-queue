@@ -1,6 +1,6 @@
 module github.com/crypto-bundle/bc-wallet-common-lib-nats-queue
 
-go 1.22
+go 1.23
 
 require github.com/nats-io/nats.go v1.36.0
 
