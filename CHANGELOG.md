@@ -1,5 +1,10 @@
 # Change Log
 
+## [v0.1.14] - 04.03.2025
+### Changed
+* Added support last lib-tinyerrors/lib-errors version
+* Added support of Go 1.23
+
 ## [v0.1.13] - 09.10.2024
 ### Added
 * Added slog.Logger dependency from golang standard library

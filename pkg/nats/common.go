@@ -41,10 +41,12 @@ import (
 )
 
 type errorFormatterService interface {
-	ErrorWithCode(err error, code int) error
 	ErrWithCode(err error, code int) error
+	NewErrorWithCode(text string, code int) error
 	ErrorGetCode(err error) int
 	ErrGetCode(err error) int
+	ErrorCodeIsOneOf(err error, codes ...int) (int, bool)
+	ErrCodeIsOneOf(err error, codes ...int) (int, bool)
 	// ErrorNoWrap function for pseudo-wrap error, must be used in case of linter warnings...
 	ErrorNoWrap(err error) error
 	// ErrNoWrap same with ErrorNoWrap function, just alias for ErrorNoWrap, just short function name...
