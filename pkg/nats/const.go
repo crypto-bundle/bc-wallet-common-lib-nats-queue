@@ -33,7 +33,8 @@
 package nats
 
 const (
-	SubjectTag = "subject"
+	SubjectTag    = "subject"
+	QueueGroupTag = "queue_group"
 
 	ResubscribeTag = "resubscribe_attempt"
 

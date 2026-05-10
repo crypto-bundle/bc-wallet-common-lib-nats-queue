@@ -58,6 +58,11 @@ type jsPushQueueGroupChanSubscription struct {
 func (s *jsPushQueueGroupChanSubscription) OnReconnect(newConn *nats.Conn) error {
 	jsNatsCtx, err := newConn.JetStream()
 	if err != nil {
+		s.l.Error("OnReconnect - unable to make NATS jet-stream context",
+			slog.String(SubjectTag, s.subjectName),
+			slog.String(QueueGroupTag, s.queueGroupName),
+		)
+
 		return s.e.ErrorOnly(err)
 	}
 
@@ -87,13 +92,17 @@ func (s *jsPushQueueGroupChanSubscription) OnDisconnect(conn *nats.Conn, err err
 
 func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool {
 	if !s.natsConn.IsConnected() {
-		s.l.Warn("lost NATS origin connection")
+		s.l.Warn("lost NATS origin connection",
+			slog.String(SubjectTag, s.subjectName),
+			slog.String(QueueGroupTag, s.queueGroupName))
 
 		return false
 	}
 
 	if !s.natsSubs.IsValid() {
-		s.l.Warn("lost NATS subscription")
+		s.l.Warn("lost NATS subscription",
+			slog.String(SubjectTag, s.subjectName),
+			slog.String(QueueGroupTag, s.queueGroupName))
 
 		return false
 	}
@@ -104,6 +113,11 @@ func (s *jsPushQueueGroupChanSubscription) Healthcheck(ctx context.Context) bool
 func (s *jsPushQueueGroupChanSubscription) Init(ctx context.Context) error {
 	jsNatsCtx, err := s.natsConn.JetStream()
 	if err != nil {
+		s.l.Error("unable to make NATS jet-stream context",
+			slog.String(SubjectTag, s.subjectName),
+			slog.String(QueueGroupTag, s.queueGroupName),
+		)
+
 		return s.e.ErrorOnly(err, "unable to make NATS jet-stream context")
 	}
 
@@ -116,7 +130,12 @@ func (s *jsPushQueueGroupChanSubscription) Subscribe(ctx context.Context) error 
 	subs, err := s.jsNatsCtx.ChanQueueSubscribe(s.subjectName, s.queueGroupName,
 		s.msgChannel, s.subscribeNatsOptions...)
 	if err != nil {
-		return s.e.ErrorOnly(err, "unable to make NATS chan-queue subscription")
+		s.l.Error("unable to make NATS chan-queue subscription",
+			slog.String(SubjectTag, s.subjectName),
+			slog.String(QueueGroupTag, s.queueGroupName),
+		)
+
+		return s.e.Errorf(err, "%s: unable to make NATS chan-queue subscription", s.subjectName)
 	}
 
 	s.natsSubs = subs
